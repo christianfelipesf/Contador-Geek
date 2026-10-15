@@ -48,6 +48,20 @@ class CountdownWallpaperService : WallpaperService() {
             Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"), R.drawable.cover_avengers)
         )
 
+        // Deslocamento aleatório sorteado uma vez e guardado: a estreia começa
+        // num card qualquer, e as próximas voltas continuam sem reiniciar.
+        private val hoverOffset: Int by lazy {
+            val svc = this@CountdownWallpaperService
+            val prefs = svc.getSharedPreferences("countdown_hover", android.content.Context.MODE_PRIVATE)
+            val saved = prefs.getInt("offset_v1", -1)
+            if (saved >= 0) saved
+            else {
+                val r = (0 until eventos.size).random()
+                prefs.edit().putInt("offset_v1", r).apply()
+                r
+            }
+        }
+
         private val drawRunnable = object : Runnable {
             override fun run() {
                 drawFrame()
@@ -110,7 +124,7 @@ class CountdownWallpaperService : WallpaperService() {
         private data class Star(val fx: Float, fy: Float, r: Float, sp: Float, ph: Float)
         private val stars = List(55) { i ->
             val rnd = kotlin.random.Random(1000 + i)
-            Star(rnd.nextFloat(), rnd.nextFloat(), 2f + rnd.nextFloat() * 5f, 0.008f + rnd.nextFloat() * 0.03f, rnd.nextFloat() * 6.28f)
+            Star(rnd.nextFloat(), rnd.nextFloat(), 2f + rnd.nextFloat() * 5f, 0.004f + rnd.nextFloat() * 0.015f, rnd.nextFloat() * 6.28f)
         }
 
         private fun purple(hue: Float, sat: Float, v: Float, alpha: Int): Int {
@@ -120,15 +134,15 @@ class CountdownWallpaperService : WallpaperService() {
 
         private fun drawAnimatedPurpleBackground(c: Canvas, w: Float, h: Float, t: Float) {
             // matiz roxo oscilando: 265 (violeta) <-> 305 (magenta) — bem perceptível
-            val hue = 282f + 22f * sin(t * 0.7f)
+            val hue = 282f + 22f * sin(t * 0.3f)
             val cTop = purple(hue - 14f, 0.85f, 0.16f, 255)
             val cMid = purple(hue, 0.9f, 0.55f, 255)
             val cBot = purple(hue + 16f, 0.85f, 0.28f, 255)
-            val mid = 0.45f + 0.18f * sin(t * 0.7f)
+            val mid = 0.45f + 0.18f * sin(t * 0.3f)
             val base = Paint().apply {
                 shader = LinearGradient(
                     0f, 0f,
-                    w * (0.5f + 0.5f * sin(t * 0.5f)),
+                    w * (0.5f + 0.5f * sin(t * 0.22f)),
                     h,
                     intArrayOf(cTop, cMid, cBot),
                     floatArrayOf(0f, mid.coerceIn(0.12f, 0.85f), 1f),
@@ -138,8 +152,8 @@ class CountdownWallpaperService : WallpaperService() {
             c.drawRect(0f, 0f, w, h, base)
 
             // brilho 1: violeta claro orbitando rápido no topo
-            val ox1 = w * (0.5f + 0.38f * sin(t * 0.9f))
-            val oy1 = h * (0.25f + 0.14f * cos(t * 0.75f))
+            val ox1 = w * (0.5f + 0.38f * sin(t * 0.35f))
+            val oy1 = h * (0.25f + 0.14f * cos(t * 0.3f))
             val r1 = w * 0.7f
             val glow1 = Paint().apply {
                 shader = RadialGradient(
@@ -152,8 +166,8 @@ class CountdownWallpaperService : WallpaperService() {
             c.drawCircle(ox1, oy1, r1, glow1)
 
             // brilho 2: rosa orbitando na base (desencontrado do 1)
-            val ox2 = w * (0.5f + 0.38f * cos(t * 0.62f + 1.5f))
-            val oy2 = h * (0.72f + 0.14f * sin(t * 0.68f + 0.7f))
+            val ox2 = w * (0.5f + 0.38f * cos(t * 0.26f + 1.5f))
+            val oy2 = h * (0.72f + 0.14f * sin(t * 0.28f + 0.7f))
             val r2 = w * 0.8f
             val glow2 = Paint().apply {
                 shader = RadialGradient(
@@ -166,7 +180,7 @@ class CountdownWallpaperService : WallpaperService() {
             c.drawCircle(ox2, oy2, r2, glow2)
 
             // brilho 3: feixe varrendo a tela (vai e volta) — dá o "movimento" óbvio
-            val sx = w * (0.5f + 0.55f * sin(t * 0.45f))
+            val sx = w * (0.5f + 0.55f * sin(t * 0.2f))
             val sweep = Paint().apply {
                 shader = LinearGradient(
                     sx - w * 0.35f, 0f, sx + w * 0.35f, 0f,
@@ -208,7 +222,7 @@ class CountdownWallpaperService : WallpaperService() {
             val h = c.height.toFloat()
             val t = (SystemClock.uptimeMillis() - startTime) / 1000f
 
-            drawAnimatedPurpleBackground(c, w, h, t)
+            drawAnimatedPurpleBackground(c, w, h, t * 0.65f)
 
             val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
@@ -255,9 +269,48 @@ class CountdownWallpaperService : WallpaperService() {
             val cardH = (h * 0.74f) / 4
             val margin = w * 0.06f
 
+            // "hover" que seleciona um card por vez, de cima pra baixo (5s cada).
+            // Relógio corrido + deslocamento sorteado: sair/voltar da tela
+            // inicial NÃO reinicia a seleção de volta pro 1º.
+            val n = eventos.size
+            val HOVER_MS = 7000L
+            val nowMs = System.currentTimeMillis()
+            val stepMod = (((nowMs / HOVER_MS) + hoverOffset) % n).toInt()
+            val frac = ((nowMs % HOVER_MS).toFloat() / HOVER_MS).coerceIn(0f, 1f)
+            val ease = frac * frac * (3f - 2f * frac)
+            val cur = stepMod
+            val prev = ((stepMod - 1 + n) % n)
+            fun centerY(idx: Int) = top + idx * cardH + cardH / 2f
+            val glowY = centerY(prev) + (centerY(cur) - centerY(prev)) * ease
+            val pulse = 0.6f + 0.4f * sin(t * 1.2f)
+            // bolha de luz atrás do card selecionado, deslizando junto
+            val hg = Paint().apply {
+                shader = RadialGradient(
+                    w / 2f, glowY, w * 0.75f,
+                    intArrayOf(Color.argb((90 + 50 * pulse).toInt(), 196, 132, 252), Color.TRANSPARENT),
+                    floatArrayOf(0f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            c.drawCircle(w / 2f, glowY, w * 0.75f, hg)
+
             eventos.forEachIndexed { i, ev ->
                 val y0 = top + i * cardH
-                val rect = RectF(margin, y0 + 10, w - margin, y0 + cardH - 10)
+                val base = RectF(margin, y0 + 10, w - margin, y0 + cardH - 10)
+
+                // "hover": o selecionado cresce animado (sem borda)
+                val glowHere = when (i) {
+                    cur -> ease
+                    prev -> 1f - ease
+                    else -> 0f
+                }
+                val s = 1f + 0.06f * glowHere
+                val rect = RectF(
+                    base.centerX() - base.width() * s / 2f,
+                    base.centerY() - base.height() * s / 2f,
+                    base.centerX() + base.width() * s / 2f,
+                    base.centerY() + base.height() * s / 2f
+                )
                 c.drawRoundRect(rect, 32f, 32f, cardPaint)
 
                 // barra lateral colorida
