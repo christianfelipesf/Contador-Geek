@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Countdown Geek Wallpaper - Preview</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#0B1020;color:white;display:flex;justify-content:center;min-height:100vh}
+  .phone{width:400px;max-width:100vw;min-height:100vh;background:linear-gradient(180deg,#0B1020,#1E1B4B);padding:40px 18px 20px;display:flex;flex-direction:column}
+  .top{text-align:center;margin-bottom:18px}
+  .top small{color:#CBD5E1;letter-spacing:4px}
+  .top h1{font-size:28px;margin-top:4px}
+  .card{background:#1F2937;border-radius:16px;padding:16px 16px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--cor)}
+  .info{padding-left:10px}
+  .info b{font-size:16px}
+  .info span{display:block;color:#E2E8F0;font-size:13px;margin-top:4px}
+  .dias{font-size:34px;font-weight:900;text-align:right}
+  .dias small{display:block;font-size:12px;font-weight:400;color:#CBD5E1}
+  .foot{text-align:center;color:#94A3B8;font-size:12px;margin-top:auto;padding-top:16px}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="top"><small>FALTAM</small><h1>COUNTDOWN GEEK</h1><small id="hoje"></small></div>
+  <div id="lista"></div>
+  <div class="foot">Atualiza sozinho todo dia • Live Wallpaper</div>
+</div>
+<script>
+  const eventos=[
+    {titulo:"VISION QUEST",sub:"Ep 3 e 4 - Disney+ - 21/10/2026",data:"2026-10-21",emoji:"👁️",cor:"#8B5CF6"},
+    {titulo:"ZELDA OOT REMAKE",sub:"Switch 2 - 05/11/2026",data:"2026-11-05",emoji:"🗡️",cor:"#22C55E"},
+    {titulo:"GTA 6",sub:"PS5 / Xbox - 19/11/2026",data:"2026-11-19",emoji:"🚗",cor:"#F59E0B"},
+    {titulo:"VINGADORES DOOMSDAY",sub:"Cinema - 18/12/2026",data:"2026-12-18",emoji:"🛡️",cor:"#EF4444"},
+  ];
+  function diasFaltam(d){
+    const h=new Date(); h.setHours(0,0,0,0);
+    const t=new Date(d+"T00:00:00");
+    return Math.round((t-h)/86400000);
+  }
+  function render(){
+    const hoje=new Date().toLocaleDateString('pt-BR');
+    document.getElementById('hoje').textContent="hoje: "+hoje;
+    document.getElementById('lista').innerHTML=eventos.map(ev=>{
+      const dd=diasFaltam(ev.data);
+      let txt=dd>1?dd+" <small>DIAS</small>":dd==1?"AMANHÃ!":dd==0?"É HOJE!":"JÁ SAIU!";
+      return `<div class="card" style="--cor:${ev.cor}"><div class="info"><b>${ev.emoji} ${ev.titulo}</b><span>${ev.sub}</span></div><div class="dias">${txt}</div></div>`;
+    }).join('');
+  }
+  render(); setInterval(render,60000);
+</script>
+</body>
+</html>

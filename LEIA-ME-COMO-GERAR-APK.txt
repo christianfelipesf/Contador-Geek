@@ -1,0 +1,27 @@
+COMO GERAR O APK DO LIVE WALLPAPER (5 min)
+
+OPÇÃO 1 - PELO ANDROID STUDIO (recomendado):
+1. Instale o Android Studio (https://developer.android.com/studio)
+2. Abra a pasta CountdownWallpaper (esta pasta) como projeto
+3. Deixe ele baixar o Gradle / SDK (aceite as licenças)
+4. Menu Build > Build APK(s) ou Generate Signed Bundle
+5. O APK sai em app/build/outputs/apk/debug/app-debug.apk
+6. Passe pro celular, instale, depois:
+   Configurações > Papel de parede > Papéis de parede animados > Countdown Geek
+
+OPÇÃO 2 - SEM COMPILAR (teste agora mesmo):
+1. Abra o arquivo preview.html no celular (Chrome)
+2. Instale da Play Store: "HTML Live Wallpaper" ou "KLWP"
+3. Aponte para o preview.html
+4. Pronto, vira papel de parede com a contagem ao vivo.
+
+DATAS USADAS (hoje = 15/10/2026):
+- Vision Quest Ep 3 e 4 -> 21/10/2026 = 6 dias
+- Zelda Ocarina of Time Remake (Switch 2) -> 05/11/2026 = 21 dias
+- GTA 6 (PS5/Xbox) -> 19/11/2026 = 35 dias
+- Vingadores: Doomsday/Doutor Destino -> 18/12/2026 = 64 dias
+  (no Brasil algumas fontes falam 17/12, se quiser mudo pra 17)
+
+Para mudar uma data, edite em:
+- app/src/main/java/com/exemplo/countdownwallpaper/CountdownWallpaperService.kt (linha LocalDate.of(...))
+- preview.html (array eventos)

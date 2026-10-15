@@ -1,0 +1,34 @@
+COMO GERAR O APK SEM ANDROID STUDIO (leve)
+
+Você tem razão, Studio = ~5GB. Para Live Wallpaper de verdade, use uma destas:
+
+--- OPÇÃO A - NUVEM, ZERO INSTALAÇÃO (recomendado, ~5 min) ---
+1. Crie conta no github.com
+2. Crie repo novo "countdown-wallpaper" e envie o conteúdo da pasta CountdownWallpaper
+   (pode arrastar pelo site mesmo, incluindo a pasta .github que criei agora)
+3. Vá em Actions > Build Wallpaper APK > Run
+4. Quando terminar, baixe em Artifacts: countdown-wallpaper-apk
+5. Instale no celular e defina como Papel de parede animado.
+
+Nada pra instalar no PC.
+
+--- OPÇÃO B - DIRETO NO CELULAR, app AIDE (~80MB) ---
+1. No celular instale "AIDE - Android IDE" da Play Store
+2. Copie a pasta CountdownWallpaper pro celular
+3. Abra no AIDE > Build APK > Install
+4. Defina como papel de parede animado.
+
+Funciona com o mesmo código que já está aqui.
+
+--- OPÇÃO C - SEM APK, NA HORA (mais leve de todas) ---
+Você já tem o preview.html pronto.
+1. Instale "HTML Live Wallpaper" ou "KLWP" da Play Store (~5-10MB)
+2. Aponte para o preview.html
+3. Vira papel de parede animado com a contagem, sem compilar nada.
+
+--- O QUE NÃO FUNCIONA ---
+- MIT App Inventor / PWABuilder / sites de "html pra apk": geram APP normal,
+  não geram LIVE WALLPAPER. O Android exige WallpaperService (que é o código
+  que eu fiz). Se você aceitar que seja um APP normal com os contadores
+  em vez de fundo animado, aí sim dá pra usar PWABuilder em 2 min. Me fala
+  que eu converto.
