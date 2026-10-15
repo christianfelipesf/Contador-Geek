@@ -23,6 +23,8 @@ import kotlin.math.sin
 class CountdownWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = CountdownEngine()
 
+    private data class Star(val fx: Float, val fy: Float, val r: Float, val sp: Float, val ph: Float)
+
     private data class Evento(
         val titulo: String,
         val subtitulo: String,
@@ -121,7 +123,6 @@ class CountdownWallpaperService : WallpaperService() {
 
         // ---- Fundo roxo ANIMADO: diagonal que desliza + 2 brilhos orbitando ----
         // Partículas subindo (parece vivo de longe)
-        private data class Star(val fx: Float, fy: Float, r: Float, sp: Float, ph: Float)
         private val stars = List(55) { i ->
             val rnd = kotlin.random.Random(1000 + i)
             Star(rnd.nextFloat(), rnd.nextFloat(), 2f + rnd.nextFloat() * 5f, 0.004f + rnd.nextFloat() * 0.015f, rnd.nextFloat() * 6.28f)
