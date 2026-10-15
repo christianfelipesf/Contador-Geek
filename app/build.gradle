@@ -3,6 +3,13 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Versão automática: cada build gera versionCode único (segundos desde
+// 01/01/2026, cabe num int por ~68 anos) e versionName com data/hora.
+def now = new Date()
+def epoch = new Date(126, 0, 1) // 2026-01-01
+def buildNumber = ((now.time - epoch.time) / 1000).toInteger()
+def stamp = now.format('yyyyMMdd-HHmm')
+
 android {
     namespace 'com.exemplo.countdownwallpaper'
     compileSdk 34
@@ -11,8 +18,8 @@ android {
         applicationId 'com.exemplo.countdownwallpaper'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode buildNumber
+        versionName "1.0.${stamp}"
     }
 
     buildTypes {

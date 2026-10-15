@@ -9,11 +9,11 @@
   body{background:#0B1020;color:white;display:flex;justify-content:center;min-height:100vh}
   .phone{width:400px;max-width:100vw;min-height:100vh;padding:40px 18px 20px;display:flex;flex-direction:column;position:relative;overflow:hidden;
     background:linear-gradient(135deg,#150826,#6D28D9,#EC4899,#2E1065);
-    background-size:300% 300%;animation:fundo 25s ease-in-out infinite}
+    background-size:300% 300%;animation:fundo 12s ease-in-out infinite}
   @keyframes fundo{0%,100%{background-position:0% 20%}50%{background-position:100% 80%}}
   .brilho{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;pointer-events:none}
-  .b1{width:340px;height:340px;background:#A855F7;top:-60px;left:-80px;animation:orb1 21s ease-in-out infinite}
-  .b2{width:380px;height:380px;background:#EC4899;bottom:-100px;right:-100px;animation:orb2 26s ease-in-out infinite}
+  .b1{width:340px;height:340px;background:#A855F7;top:-60px;left:-80px;animation:orb1 9s ease-in-out infinite}
+  .b2{width:380px;height:380px;background:#EC4899;bottom:-100px;right:-100px;animation:orb2 12s ease-in-out infinite}
   @keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(120px,90px)}}
   @keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-110px,-80px)}}
   #stars{position:absolute;inset:0;pointer-events:none}
@@ -21,7 +21,7 @@
   .top small{color:#DDD6FE;letter-spacing:4px}
   .top h1{font-size:28px;margin-top:4px;text-shadow:0 2px 18px #7C3AED}
   #lista{position:relative;z-index:2}
-  .card{background:rgba(30,16,60,.78);border:1px solid rgba(168,85,247,.35);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;backdrop-filter:blur(2px);transition:transform 1s ease,box-shadow 1s ease,border-color 1s ease,background 1s ease}
+  .card{background:rgba(30,16,60,.78);border:1px solid rgba(168,85,247,.35);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;backdrop-filter:blur(2px);transition:transform .5s ease,box-shadow .5s ease,border-color .5s ease,background .5s ease}
   .card.sel{transform:scale(1.04);background:rgba(52,28,100,.88);border-color:transparent}
   .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--cor)}
   .info{padding-left:10px}
@@ -64,7 +64,7 @@
   // hover: um card por vez de cima pra baixo (5s), estreia sorteada, sem reiniciar
   const HOFF=Math.floor(Math.random()*eventos.length);
   setInterval(()=>{const cards=[...document.querySelectorAll('#lista .card')];if(!cards.length)return;
-    const k=Math.floor(Date.now()/7000)+HOFF,n=cards.length,cur=k%n;
+    const k=Math.floor(Date.now()/3000)+HOFF,n=cards.length,cur=k%n;
     cards.forEach((el,i)=>el.classList.toggle('sel',i===cur));},200);
   // partículas subindo (igual ao wallpaper)
   const cv=document.getElementById('stars'),ctx=cv.getContext('2d');let P=[];

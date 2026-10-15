@@ -68,6 +68,13 @@ Relatório em: `app\build\reports\tests\testDebugUnitTest\index.html`
 2. Abra o app **Countdown Wallpaper** → **"Definir como papel de parede"**
    (ou segure na tela inicial → Papel de parede → Papéis de parede animados → Countdown Geek).
 
+## Configurações (dentro do app)
+
+Na tela do app dá pra ajustar sem recompilar (vale na hora):
+- **Animação:** velocidade (25–200%), fluidez (~8–60 fps, fundo em GPU), partículas (0–80)
+- **Seleção:** hover liga/desliga, tempo parado por card (3–15s), transição entre cards (0–2s), zoom
+- **Cores:** temas prontos (Roxo, Oceano, Fogo) ou hex personalizado + restaurar padrão
+
 ## Preview no PC
 
 Abra `preview.html` no navegador: mesmo layout, gradiente animado e contagem ao vivo (espelho do wallpaper).

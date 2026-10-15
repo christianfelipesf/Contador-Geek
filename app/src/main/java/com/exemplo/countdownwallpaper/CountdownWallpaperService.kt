@@ -1,59 +1,70 @@
 package com.exemplo.countdownwallpaper
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.content.Context
 import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
 import android.graphics.RectF
-import android.graphics.Shader
-import android.os.Handler
-import android.os.Looper
+import android.opengl.GLES20
+import android.os.Build
 import android.os.SystemClock
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
-import androidx.core.content.ContextCompat
+import android.view.WindowManager
 import java.time.LocalDate
-import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * Live wallpaper com fundo 100% em OpenGL ES (fragment shader na GPU).
+ * Cards/textos são texturas assadas uma vez e redesenhadas como quads.
+ * CPU por frame ~= 0: por isso não trava, mesmo a 30-60fps.
+ */
 class CountdownWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = CountdownEngine()
-
-    private data class Star(val fx: Float, val fy: Float, val r: Float, val sp: Float, val ph: Float)
 
     private data class Evento(
         val titulo: String,
         val subtitulo: String,
         val data: LocalDate,
         val emoji: String,
-        val cor: Int,
-        val coverRes: Int
+        val cor: Int
     )
 
+    /** Configurações editáveis na tela do app (MainActivity). */
+    object Prefs {
+        const val FILE = "cw_settings"
+        const val SPEED = "speed"           // multiplicador 0.25..2.0
+        const val FRAME_MS = "frame_ms"     // intervalo entre frames (~33 = 30fps)
+        const val PARTICLES = "particles"   // 0..80 (estrelas no shader)
+        const val HOVER = "hover"           // liga/desliga seleção
+        const val HOVER_MS = "hover_ms"     // tempo parado em cada card
+        const val HOVER_TR = "hover_tr"     // duração da transição entre cards (ms)
+        const val ZOOM = "zoom"             // card cresce ao selecionar
+        const val C_TOP = "c_top"
+        const val C_MID = "c_mid"
+        const val C_BOT = "c_bot"
+        const val DEF_TOP = "#150826"
+        const val DEF_MID = "#6D28D9"
+        const val DEF_BOT = "#2E1065"
+    }
+
     inner class CountdownEngine : Engine() {
-        private val handler = Handler(Looper.getMainLooper())
-        private var visible = false
-        private val startTime = SystemClock.uptimeMillis()
-        private val coverCache = mutableMapOf<Int, Bitmap?>()
+        private fun settings() =
+            this@CountdownWallpaperService.getSharedPreferences(Prefs.FILE, Context.MODE_PRIVATE)
 
         // ===== DATAS ALVO - edite aqui se mudar =====
         // Hoje de referência: 15/10/2026
 
         private val eventos = listOf(
-            Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6"), R.drawable.cover_vision),
-            Evento("ZELDA OOT REMAKE", "Switch 2 - 05/11", LocalDate.of(2026, 11, 5), "🗡️", Color.parseColor("#22C55E"), R.drawable.cover_zelda),
-            Evento("GTA 6", "PS5 / Xbox - 19/11", LocalDate.of(2026, 11, 19), "🚗", Color.parseColor("#F59E0B"), R.drawable.cover_gta6),
-            Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"), R.drawable.cover_avengers)
+            Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6")),
+            Evento("ZELDA OOT REMAKE", "Switch 2 - 05/11", LocalDate.of(2026, 11, 5), "🗡️", Color.parseColor("#22C55E")),
+            Evento("GTA 6", "PS5 / Xbox - 19/11", LocalDate.of(2026, 11, 19), "🚗", Color.parseColor("#F59E0B")),
+            Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"))
         )
 
         // Deslocamento aleatório sorteado uma vez e guardado: a estreia começa
         // num card qualquer, e as próximas voltas continuam sem reiniciar.
         private val hoverOffset: Int by lazy {
             val svc = this@CountdownWallpaperService
-            val prefs = svc.getSharedPreferences("countdown_hover", android.content.Context.MODE_PRIVATE)
+            val prefs = svc.getSharedPreferences("countdown_hover", Context.MODE_PRIVATE)
             val saved = prefs.getInt("offset_v1", -1)
             if (saved >= 0) saved
             else {
@@ -63,282 +74,348 @@ class CountdownWallpaperService : WallpaperService() {
             }
         }
 
-        private val drawRunnable = object : Runnable {
-            override fun run() {
-                drawFrame()
-                // ~12 fps: animação visível sem torrar bateria
-                if (visible) handler.postDelayed(this, 80)
-            }
+        private fun parseColor(s: String?, fb: String): Int = try {
+            Color.parseColor(s)
+        } catch (e: Exception) {
+            Color.parseColor(fb)
         }
 
-        override fun onVisibilityChanged(visible: Boolean) {
-            this.visible = visible
-            if (visible) {
-                drawFrame()
-                handler.postDelayed(drawRunnable, 80)
-            } else {
-                handler.removeCallbacks(drawRunnable)
-            }
+        // ---- ciclo de vida: thread GL própria, EGL criado/destruído nela ----
+        @Volatile private var visible = false
+        @Volatile private var running = false
+        private var holderRef: SurfaceHolder? = null
+        private var glThread: Thread? = null
+        @Volatile private var surfW = 0
+        @Volatile private var surfH = 0
+        @Volatile private var needRebake = true
+        // A superfície do wallpaper costuma ser MAIS LARGA que a tela (rolagem
+        // entre páginas). O layout usa o tamanho real da tela; xPix/yPix dizem
+        // onde está a janela visível dentro da superfície.
+        @Volatile private var xPix = 0
+        @Volatile private var yPix = 0
+        private var layoutW = 0
+        private var layoutH = 0
+        private var layW = 0f
+        private var layH = 0f
+
+        // ---- estado GL (só tocado na thread GL) ----
+        private val startTime = SystemClock.uptimeMillis()
+        private var gl: GlEngine.GlCore? = null
+        private var bg: GlEngine.BgRenderer? = null
+        private var quads: GlEngine.QuadRenderer? = null
+        private var haloTex = 0
+        private val cardTex = IntArray(4)
+        private val cardRects = Array(4) { RectF() }
+        private var cardH = 0f
+        private var margin = 0f
+        private var topY = 0f
+        private val sprHTop = Sprite()
+        private val sprHTitle = Sprite()
+        private val sprFooter = Sprite()
+        private val labels = Array(4) { Sprite() }
+        private val subs = Array(4) { Sprite() }
+        private val days = Array(4) { Sprite() }
+        private var cachedDay: LocalDate? = null
+
+        override fun onSurfaceCreated(holder: SurfaceHolder?) {
+            super.onSurfaceCreated(holder)
+            holderRef = holder
+            startLoop()
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
-            drawFrame()
+            surfW = width
+            surfH = height
+            updateScreenSize()
+            needRebake = true
         }
 
-        private fun getCover(resId: Int): Bitmap? {
-            if (coverCache.containsKey(resId)) return coverCache[resId]
-            return try {
-                val d = ContextCompat.getDrawable(this@CountdownWallpaperService, resId)
-                    ?: return null.also { coverCache[resId] = null }
-                val size = 256
-                val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bmp)
-                d.setBounds(0, 0, size, size)
-                d.draw(canvas)
-                coverCache[resId] = bmp
-                bmp
-            } catch (e: Exception) {
-                coverCache[resId] = null
-                null
-            }
+        override fun onOffsetsChanged(
+            xOffset: Float, yOffset: Float, xOffsetStep: Float, yOffsetStep: Float,
+            xPixelOffset: Int, yPixelOffset: Int
+        ) {
+            super.onOffsetsChanged(xOffset, yOffset, xOffsetStep, yOffsetStep, xPixelOffset, yPixelOffset)
+            xPix = xPixelOffset
+            yPix = yPixelOffset
         }
 
-        private fun drawFrame() {
-            val holder = surfaceHolder
-            var canvas: Canvas? = null
+        @Suppress("DEPRECATION")
+        private fun updateScreenSize() {
             try {
-                canvas = holder.lockCanvas()
-                if (canvas != null) draw(canvas)
-            } finally {
-                if (canvas != null) holder.unlockCanvasAndPost(canvas)
+                val wm = this@CountdownWallpaperService
+                    .getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val b = wm.currentWindowMetrics.bounds
+                    layoutW = b.width()
+                    layoutH = b.height()
+                } else {
+                    val dm = android.util.DisplayMetrics()
+                    wm.defaultDisplay.getMetrics(dm)
+                    layoutW = dm.widthPixels
+                    layoutH = dm.heightPixels
+                }
+            } catch (e: Exception) {
             }
+            if (layoutW <= 0) layoutW = surfW
+            if (layoutH <= 0) layoutH = surfH
         }
 
-        // ---- Fundo roxo ANIMADO: diagonal que desliza + 2 brilhos orbitando ----
-        // Partículas subindo (parece vivo de longe)
-        private val stars = List(55) { i ->
-            val rnd = kotlin.random.Random(1000 + i)
-            Star(rnd.nextFloat(), rnd.nextFloat(), 2f + rnd.nextFloat() * 5f, 0.004f + rnd.nextFloat() * 0.015f, rnd.nextFloat() * 6.28f)
+        override fun onSurfaceDestroyed(holder: SurfaceHolder?) {
+            running = false
+            try {
+                glThread?.join(1500)
+            } catch (e: Exception) {
+            }
+            glThread = null
+            holderRef = null
+            super.onSurfaceDestroyed(holder)
         }
 
-        private fun purple(hue: Float, sat: Float, v: Float, alpha: Int): Int {
-            val c = Color.HSVToColor(floatArrayOf(hue, sat, v))
-            return Color.argb(alpha, Color.red(c), Color.green(c), Color.blue(c))
+        override fun onVisibilityChanged(v: Boolean) {
+            visible = v
         }
 
-        private fun drawAnimatedPurpleBackground(c: Canvas, w: Float, h: Float, t: Float) {
-            // matiz roxo oscilando: 265 (violeta) <-> 305 (magenta) — bem perceptível
-            val hue = 282f + 22f * sin(t * 0.3f)
-            val cTop = purple(hue - 14f, 0.85f, 0.16f, 255)
-            val cMid = purple(hue, 0.9f, 0.55f, 255)
-            val cBot = purple(hue + 16f, 0.85f, 0.28f, 255)
-            val mid = 0.45f + 0.18f * sin(t * 0.3f)
-            val base = Paint().apply {
-                shader = LinearGradient(
-                    0f, 0f,
-                    w * (0.5f + 0.5f * sin(t * 0.22f)),
-                    h,
-                    intArrayOf(cTop, cMid, cBot),
-                    floatArrayOf(0f, mid.coerceIn(0.12f, 0.85f), 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-            c.drawRect(0f, 0f, w, h, base)
-
-            // brilho 1: violeta claro orbitando rápido no topo
-            val ox1 = w * (0.5f + 0.38f * sin(t * 0.35f))
-            val oy1 = h * (0.25f + 0.14f * cos(t * 0.3f))
-            val r1 = w * 0.7f
-            val glow1 = Paint().apply {
-                shader = RadialGradient(
-                    ox1, oy1, r1,
-                    intArrayOf(Color.argb(120, 192, 132, 252), Color.TRANSPARENT),
-                    floatArrayOf(0f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-            c.drawCircle(ox1, oy1, r1, glow1)
-
-            // brilho 2: rosa orbitando na base (desencontrado do 1)
-            val ox2 = w * (0.5f + 0.38f * cos(t * 0.26f + 1.5f))
-            val oy2 = h * (0.72f + 0.14f * sin(t * 0.28f + 0.7f))
-            val r2 = w * 0.8f
-            val glow2 = Paint().apply {
-                shader = RadialGradient(
-                    ox2, oy2, r2,
-                    intArrayOf(Color.argb(100, 240, 120, 200), Color.TRANSPARENT),
-                    floatArrayOf(0f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-            c.drawCircle(ox2, oy2, r2, glow2)
-
-            // brilho 3: feixe varrendo a tela (vai e volta) — dá o "movimento" óbvio
-            val sx = w * (0.5f + 0.55f * sin(t * 0.2f))
-            val sweep = Paint().apply {
-                shader = LinearGradient(
-                    sx - w * 0.35f, 0f, sx + w * 0.35f, 0f,
-                    intArrayOf(Color.TRANSPARENT, Color.argb(55, 255, 255, 255), Color.TRANSPARENT),
-                    floatArrayOf(0f, 0.5f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-            c.drawRect(0f, 0f, w, h, sweep)
-
-            // partículas subindo com cintilação
-            val dot = Paint(Paint.ANTI_ALIAS_FLAG)
-            for (s in stars) {
-                val yy = ((s.fy - t * s.sp) % 1f + 1f) % 1f
-                val tw = 0.5f + 0.5f * sin(t * 2.2f + s.ph)
-                dot.color = Color.argb((60 + 140 * tw).toInt(), 230, 220, 255)
-                c.drawCircle(s.fx * w, yy * h, s.r, dot)
-            }
+        private fun startLoop() {
+            if (running) return
+            running = true
+            glThread = Thread({ glLoop() }, "cw-gl").apply { start() }
         }
 
-        private fun drawCover(c: Canvas, bmp: Bitmap?, dst: RectF, radius: Float) {
-            if (bmp == null) return
-            val path = Path().apply { addRoundRect(dst, radius, radius, Path.Direction.CW) }
-            c.save()
-            c.clipPath(path)
-            val bw = bmp.width.toFloat()
-            val bh = bmp.height.toFloat()
-            val scale = maxOf(dst.width() / bw, dst.height() / bh)
-            val dw = bw * scale
-            val dh = bh * scale
-            val left = dst.centerX() - dw / 2f
-            val top = dst.centerY() - dh / 2f
-            c.drawBitmap(bmp, null, RectF(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG))
-            c.restore()
+        private fun glLoop() {
+            var eglOk = false
+            while (running) {
+                val surf = holderRef?.surface
+                if (surf != null && surf.isValid) {
+                    if (!eglOk) {
+                        val g = GlEngine.GlCore()
+                        if (g.init(surf)) {
+                            gl = g
+                            bg = GlEngine.BgRenderer().apply { init() }
+                            quads = GlEngine.QuadRenderer().apply { init() }
+                            val halo = GlEngine.radialBmp(128)
+                            haloTex = GlEngine.uploadBitmap(halo)
+                            halo.recycle()
+                            eglOk = true
+                            needRebake = true
+                        } else {
+                            try {
+                                Thread.sleep(500)
+                            } catch (e: InterruptedException) {
+                            }
+                            continue
+                        }
+                    }
+                    if (needRebake && surfW > 0 && surfH > 0) {
+                        gl?.makeCurrent()
+                        rebakeAll(surfW, surfH)
+                        needRebake = false
+                    }
+                    if (visible && surfW > 0 && surfH > 0) {
+                        val t0 = SystemClock.uptimeMillis()
+                        gl?.makeCurrent()
+                        drawGL()
+                        gl?.swap()
+                        val frameMs = settings().getInt(Prefs.FRAME_MS, 33).toLong()
+                        val wait = frameMs - (SystemClock.uptimeMillis() - t0)
+                        if (wait > 0) {
+                            try {
+                                Thread.sleep(wait)
+                            } catch (e: InterruptedException) {
+                            }
+                        }
+                    } else {
+                        try {
+                            Thread.sleep(250)
+                        } catch (e: InterruptedException) {
+                        }
+                    }
+                } else {
+                    try {
+                        Thread.sleep(250)
+                    } catch (e: InterruptedException) {
+                    }
+                }
+            }
+            // teardown na própria thread GL
+            try {
+                gl?.makeCurrent()
+                GlEngine.deleteTex(haloTex)
+                GlEngine.deleteTex(*cardTex)
+                (listOf(sprHTop, sprHTitle, sprFooter) + labels + subs + days)
+                    .forEach { GlEngine.deleteTex(it.tex); it.tex = 0 }
+                gl?.release()
+            } catch (e: Exception) {
+            }
+            gl = null
+            bg = null
+            quads = null
         }
 
-        private fun draw(c: Canvas) {
-            val w = c.width.toFloat()
-            val h = c.height.toFloat()
-            val t = (SystemClock.uptimeMillis() - startTime) / 1000f
+        private fun replace(s: Sprite, b: Baked) {
+            if (s.tex != 0) GlEngine.deleteTex(s.tex)
+            s.tex = b.tex
+            s.w = b.w
+            s.h = b.h
+            s.base = b.base
+        }
 
-            drawAnimatedPurpleBackground(c, w, h, t * 0.65f)
-
-            val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                textSize = w * 0.075f
-                isFakeBoldText = true
-                textAlign = Paint.Align.CENTER
-            }
-            val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor("#DDD6FE")
-                textSize = w * 0.038f
-                textAlign = Paint.Align.CENTER
-            }
-            val daysPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                textSize = w * 0.11f
-                isFakeBoldText = true
-                textAlign = Paint.Align.CENTER
-            }
-            val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.argb(200, 30, 16, 60)
-            }
-            val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                textSize = w * 0.045f
-                isFakeBoldText = true
-                textAlign = Paint.Align.LEFT
-            }
-            val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor("#E2E8F0")
-                textSize = w * 0.035f
-                textAlign = Paint.Align.LEFT
-            }
-            val emojiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = w * 0.09f
-                textAlign = Paint.Align.CENTER
-            }
-
-            // Título topo
-            c.drawText("FALTAM", w / 2, h * 0.10f, subPaint)
-            c.drawText("COUNTDOWN GEEK", w / 2, h * 0.145f, titlePaint)
-
-            // Cards
-            val top = h * 0.19f
-            val cardH = (h * 0.74f) / 4
-            val margin = w * 0.06f
-
-            // "hover" que seleciona um card por vez, de cima pra baixo (5s cada).
-            // Relógio corrido + deslocamento sorteado: sair/voltar da tela
-            // inicial NÃO reinicia a seleção de volta pro 1º.
-            val n = eventos.size
-            val HOVER_MS = 7000L
-            val nowMs = System.currentTimeMillis()
-            val stepMod = (((nowMs / HOVER_MS) + hoverOffset) % n).toInt()
-            val frac = ((nowMs % HOVER_MS).toFloat() / HOVER_MS).coerceIn(0f, 1f)
-            val ease = frac * frac * (3f - 2f * frac)
-            val cur = stepMod
-            val prev = ((stepMod - 1 + n) % n)
-            fun centerY(idx: Int) = top + idx * cardH + cardH / 2f
-            val glowY = centerY(prev) + (centerY(cur) - centerY(prev)) * ease
-            val pulse = 0.6f + 0.4f * sin(t * 1.2f)
-            // bolha de luz atrás do card selecionado, deslizando junto
-            val hg = Paint().apply {
-                shader = RadialGradient(
-                    w / 2f, glowY, w * 0.75f,
-                    intArrayOf(Color.argb((90 + 50 * pulse).toInt(), 196, 132, 252), Color.TRANSPARENT),
-                    floatArrayOf(0f, 1f),
-                    Shader.TileMode.CLAMP
-                )
-            }
-            c.drawCircle(w / 2f, glowY, w * 0.75f, hg)
-
+        /** Reassa cards + textos (tamanho da tela/superfície mudou). */
+        private fun rebakeAll(w: Int, h: Int) {
+            // Layout no tamanho REAL da tela, não no da superfície (que é mais larga).
+            val lw = (if (layoutW > 0) layoutW else w)
+            val lh = (if (layoutH > 0) layoutH else h)
+            layW = lw.toFloat()
+            layH = lh.toFloat()
+            val wf = layW
+            val hf = layH
+            // Cards 20% mais estreitos e 10% mais baixos, centralizados na
+            // mesma região de antes (0.19 → 0.93 da altura).
+            margin = wf * 0.148f
+            cardH = (hf * 0.666f) / eventos.size
+            val top = hf * 0.227f
+            topY = top
+            val cw = (wf - margin * 2f).toInt()
+            val ch = (cardH - 20f).toInt()
             eventos.forEachIndexed { i, ev ->
                 val y0 = top + i * cardH
-                val base = RectF(margin, y0 + 10, w - margin, y0 + cardH - 10)
+                cardRects[i].set(margin, y0 + 10, wf - margin, y0 + cardH - 10)
+                if (cardTex[i] != 0) GlEngine.deleteTex(cardTex[i])
+                val bmp = GlEngine.bakeCardBmp(cw, ch, ev.cor)
+                cardTex[i] = GlEngine.uploadBitmap(bmp)
+                bmp.recycle()
+                replace(
+                    labels[i],
+                    GlEngine.uploadText(
+                        "${ev.emoji}  ${ev.titulo}",
+                        (wf * 0.045f).coerceAtMost(cardH * 0.22f), Color.WHITE, true
+                    )
+                )
+                replace(
+                    subs[i],
+                    GlEngine.uploadText(
+                        ev.subtitulo,
+                        (wf * 0.035f).coerceAtMost(cardH * 0.17f),
+                        Color.parseColor("#E2E8F0"), false
+                    )
+                )
+            }
+            replace(sprHTop, GlEngine.uploadText("FALTAM", wf * 0.038f, Color.parseColor("#DDD6FE"), false))
+            replace(sprHTitle, GlEngine.uploadText("COUNTDOWN GEEK", wf * 0.075f, Color.WHITE, true))
+            replace(sprFooter, GlEngine.uploadText("Atualiza sozinho todo dia", wf * 0.038f, Color.parseColor("#DDD6FE"), false))
+            rebakeDays()
+        }
 
-                // "hover": o selecionado cresce animado (sem borda)
+        /** Só os dias (chamado quando o dia vira). */
+        private fun rebakeDays() {
+            val today = LocalDate.now()
+            val wf = layW
+            eventos.forEachIndexed { i, ev ->
+                val txt = CountdownLogic.textoDias(CountdownLogic.diasFaltam(today, ev.data))
+                val size = (if (txt.length > 7) wf * 0.075f else wf * 0.10f)
+                    .coerceAtMost((cardH - 20f) * 0.42f)
+                replace(days[i], GlEngine.uploadText(txt, size, Color.WHITE, true))
+            }
+            cachedDay = today
+        }
+
+        private fun centerY(top: Float, idx: Int) = top + idx * cardH + cardH / 2f
+
+        private fun drawGL() {
+            val q = quads ?: return
+            val b = bg ?: return
+            val w = surfW.toFloat()
+            val h = surfH.toFloat()
+            if (w < 1 || h < 1 || layW < 1 || layH < 1) return
+            // Janela visível dentro da superfície larga (parallax do launcher).
+            val shiftX = xPix.toFloat().coerceIn(0f, (w - layW).coerceAtLeast(0f))
+            val shiftY = yPix.toFloat().coerceIn(0f, (h - layH).coerceAtLeast(0f))
+            val cxScreen = shiftX + layW / 2f
+            val prefs = settings()
+            val speed = prefs.getFloat(Prefs.SPEED, 1f)
+            val t = (SystemClock.uptimeMillis() - startTime) / 1000f * speed
+
+            val cTop = parseColor(prefs.getString(Prefs.C_TOP, Prefs.DEF_TOP), Prefs.DEF_TOP)
+            val cMid = parseColor(prefs.getString(Prefs.C_MID, Prefs.DEF_MID), Prefs.DEF_MID)
+            val cBot = parseColor(prefs.getString(Prefs.C_BOT, Prefs.DEF_BOT), Prefs.DEF_BOT)
+            val stars = prefs.getInt(Prefs.PARTICLES, 30).coerceIn(0, 80).toFloat()
+
+            val today = LocalDate.now()
+            if (today != cachedDay) rebakeDays()
+
+            GLES20.glViewport(0, 0, surfW, surfH)
+            GLES20.glClearColor(0f, 0f, 0f, 1f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            b.draw(w, h, t, cTop, cMid, cBot, stars)
+
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+
+            val top = topY
+
+            // Título topo (centralizado na janela visível)
+            q.drawWhite(sprHTop.tex, cxScreen - sprHTop.w / 2f, layH * 0.10f - sprHTop.base, sprHTop.w, sprHTop.h, w, h)
+            q.drawWhite(sprHTitle.tex, cxScreen - sprHTitle.w / 2f, layH * 0.145f - sprHTitle.base, sprHTitle.w, sprHTitle.h, w, h)
+
+            // "hover": um card por vez, de cima pra baixo, estreia sorteada,
+            // relógio corrido (sair/voltar não reinicia).
+            // Cada ciclo = tempo parado (dwell) + transição deslizando pro próximo.
+            val hoverOn = prefs.getBoolean(Prefs.HOVER, true)
+            val zoomOn = prefs.getBoolean(Prefs.ZOOM, true)
+            val n = eventos.size
+            val dwellMs = prefs.getLong(Prefs.HOVER_MS, 3000L).coerceAtLeast(1000L)
+            val travelMs = prefs.getLong(Prefs.HOVER_TR, 600L).coerceIn(0L, dwellMs)
+            val periodMs = dwellMs + travelMs
+            val nowMs = System.currentTimeMillis()
+            val stepIdx = (((nowMs / periodMs) + hoverOffset) % n).toInt()
+            val within = nowMs % periodMs
+            val cur = if (hoverOn) stepIdx else -1
+            val nxt = if (hoverOn) (cur + 1) % n else -1
+            val travelFrac = if (travelMs > 0) {
+                ((within - dwellMs).coerceAtLeast(0L).toFloat() / travelMs).coerceIn(0f, 1f)
+            } else 1f
+            val easeTravel = travelFrac * travelFrac * (3f - 2f * travelFrac)
+            if (hoverOn) {
+                val glowY = centerY(top, cur) + (centerY(top, nxt) - centerY(top, cur)) * easeTravel
+                val pulse = 0.6f + 0.4f * sin(t * 2.0f)
+                val hw = (layW - margin * 2f) / 2f + 18f
+                val hh = cardH / 2f + 6f
+                q.draw(
+                    haloTex, cxScreen - hw, shiftY + glowY - hh, hw * 2f, hh * 2f, w, h,
+                    196f / 255f, 132f / 255f, 252f / 255f, (70 + 40 * pulse) / 255f
+                )
+            }
+
+            // Cards + textos (layout original: emoji+título à esquerda, dias à direita)
+            eventos.forEachIndexed { i, _ ->
+                val base = cardRects[i]
                 val glowHere = when (i) {
-                    cur -> ease
-                    prev -> 1f - ease
+                    cur -> 1f - easeTravel
+                    nxt -> easeTravel
                     else -> 0f
                 }
-                val s = 1f + 0.06f * glowHere
-                val rect = RectF(
-                    base.centerX() - base.width() * s / 2f,
-                    base.centerY() - base.height() * s / 2f,
-                    base.centerX() + base.width() * s / 2f,
-                    base.centerY() + base.height() * s / 2f
-                )
-                c.drawRoundRect(rect, 32f, 32f, cardPaint)
+                val s = if (zoomOn) 1f + 0.06f * glowHere else 1f
+                val cx = base.centerX()
+                val cy = base.centerY()
+                val rl = shiftX + cx - base.width() * s / 2f
+                val rt = shiftY + cy - base.height() * s / 2f
+                val rw = base.width() * s
+                val rh = base.height() * s
+                q.drawWhite(cardTex[i], rl, rt, rw, rh, w, h)
 
-                // barra lateral colorida
-                val barPaint = Paint().apply { color = ev.cor }
-                c.drawRoundRect(RectF(rect.left, rect.top, rect.left + 14f, rect.bottom), 14f, 14f, barPaint)
-
-                // miniatura da capa (foto) à esquerda
-                val thumbSize = cardH - 44f
-                val thumbRect = RectF(rect.left + 28f, rect.top + 22f, rect.left + 28f + thumbSize, rect.top + 22f + thumbSize)
-                val bmp = getCover(ev.coverRes)
-                if (bmp != null) {
-                    drawCover(c, bmp, thumbRect, 20f)
-                } else {
-                    c.drawText(ev.emoji, thumbRect.centerX(), thumbRect.centerY() + emojiPaint.textSize * 0.35f, emojiPaint)
-                }
-
-                val dias = CountdownLogic.diasFaltam(LocalDate.now(), ev.data)
-                val textoDias = CountdownLogic.textoDias(dias)
-
-                val textX = thumbRect.right + 20f
-                c.drawText(ev.titulo, textX, rect.top + cardH * 0.32f, labelPaint)
-                c.drawText(ev.subtitulo, textX, rect.top + cardH * 0.55f, datePaint)
-
-                // dias grandes à direita
-                val oldAlign = daysPaint.textAlign
-                daysPaint.textAlign = Paint.Align.RIGHT
-                daysPaint.textSize = if (textoDias.length > 7) w * 0.075f else w * 0.10f
-                c.drawText(textoDias, rect.right - 28f, rect.top + cardH * 0.65f, daysPaint)
-                daysPaint.textAlign = oldAlign
+                val lb = labels[i]
+                q.drawWhite(lb.tex, rl + 32f, rt + cardH * 0.38f - lb.base, lb.w, lb.h, w, h)
+                val sb = subs[i]
+                q.drawWhite(sb.tex, rl + 32f, rt + cardH * 0.62f - sb.base, sb.w, sb.h, w, h)
+                val db = days[i]
+                q.drawWhite(db.tex, rl + rw - 28f - db.w, rt + cardH * 0.65f - db.base, db.w, db.h, w, h)
             }
 
             // rodapé
-            c.drawText("Atualiza sozinho todo dia", w / 2, h * 0.965f, subPaint)
+            q.drawWhite(
+                sprFooter.tex, cxScreen - sprFooter.w / 2f, layH * 0.965f - sprFooter.base,
+                sprFooter.w, sprFooter.h, w, h
+            )
         }
     }
 }
