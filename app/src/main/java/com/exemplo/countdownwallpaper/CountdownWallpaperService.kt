@@ -1,43 +1,58 @@
 package com.exemplo.countdownwallpaper
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
+import androidx.core.content.ContextCompat
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import kotlin.math.roundToInt
+import kotlin.math.cos
+import kotlin.math.sin
 
 class CountdownWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = CountdownEngine()
 
-    private data class Evento(val titulo: String, val subtitulo: String, val data: LocalDate, val emoji: String, val cor: Int)
+    private data class Evento(
+        val titulo: String,
+        val subtitulo: String,
+        val data: LocalDate,
+        val emoji: String,
+        val cor: Int,
+        val coverRes: Int
+    )
 
     inner class CountdownEngine : Engine() {
         private val handler = Handler(Looper.getMainLooper())
         private var visible = false
+        private val startTime = SystemClock.uptimeMillis()
+        private val coverCache = mutableMapOf<Int, Bitmap?>()
 
         // ===== DATAS ALVO - edite aqui se mudar =====
         // Hoje de referência: 15/10/2026
 
         private val eventos = listOf(
-            Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6")),
-            Evento("ZELDA OOT REMAKE", "Switch 2 - 05/11", LocalDate.of(2026, 11, 5), "🗡️", Color.parseColor("#22C55E")),
-            Evento("GTA 6", "PS5 / Xbox - 19/11", LocalDate.of(2026, 11, 19), "🚗", Color.parseColor("#F59E0B")),
-            Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"))
+            Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6"), R.drawable.cover_vision),
+            Evento("ZELDA OOT REMAKE", "Switch 2 - 05/11", LocalDate.of(2026, 11, 5), "🗡️", Color.parseColor("#22C55E"), R.drawable.cover_zelda),
+            Evento("GTA 6", "PS5 / Xbox - 19/11", LocalDate.of(2026, 11, 19), "🚗", Color.parseColor("#F59E0B"), R.drawable.cover_gta6),
+            Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"), R.drawable.cover_avengers)
         )
 
         private val drawRunnable = object : Runnable {
             override fun run() {
                 drawFrame()
-                // atualiza a cada 1 minuto (60000ms). Suficiente p/ contagem em dias.
-                if (visible) handler.postDelayed(this, 60_000)
+                // ~12 fps: animação visível sem torrar bateria
+                if (visible) handler.postDelayed(this, 80)
             }
         }
 
@@ -45,7 +60,7 @@ class CountdownWallpaperService : WallpaperService() {
             this.visible = visible
             if (visible) {
                 drawFrame()
-                handler.postDelayed(drawRunnable, 60_000)
+                handler.postDelayed(drawRunnable, 80)
             } else {
                 handler.removeCallbacks(drawRunnable)
             }
@@ -61,6 +76,24 @@ class CountdownWallpaperService : WallpaperService() {
             return ChronoUnit.DAYS.between(hoje, alvo)
         }
 
+        private fun getCover(resId: Int): Bitmap? {
+            if (coverCache.containsKey(resId)) return coverCache[resId]
+            return try {
+                val d = ContextCompat.getDrawable(this@CountdownWallpaperService, resId)
+                    ?: return null.also { coverCache[resId] = null }
+                val size = 256
+                val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                d.setBounds(0, 0, size, size)
+                d.draw(canvas)
+                coverCache[resId] = bmp
+                bmp
+            } catch (e: Exception) {
+                coverCache[resId] = null
+                null
+            }
+        }
+
         private fun drawFrame() {
             val holder = surfaceHolder
             var canvas: Canvas? = null
@@ -72,18 +105,110 @@ class CountdownWallpaperService : WallpaperService() {
             }
         }
 
+        // ---- Fundo roxo ANIMADO: diagonal que desliza + 2 brilhos orbitando ----
+        // Partículas subindo (parece vivo de longe)
+        private data class Star(val fx: Float, fy: Float, r: Float, sp: Float, ph: Float)
+        private val stars = List(55) { i ->
+            val rnd = kotlin.random.Random(1000 + i)
+            Star(rnd.nextFloat(), rnd.nextFloat(), 2f + rnd.nextFloat() * 5f, 0.008f + rnd.nextFloat() * 0.03f, rnd.nextFloat() * 6.28f)
+        }
+
+        private fun purple(hue: Float, sat: Float, v: Float, alpha: Int): Int {
+            val c = Color.HSVToColor(floatArrayOf(hue, sat, v))
+            return Color.argb(alpha, Color.red(c), Color.green(c), Color.blue(c))
+        }
+
+        private fun drawAnimatedPurpleBackground(c: Canvas, w: Float, h: Float, t: Float) {
+            // matiz roxo oscilando: 265 (violeta) <-> 305 (magenta) — bem perceptível
+            val hue = 282f + 22f * sin(t * 0.7f)
+            val cTop = purple(hue - 14f, 0.85f, 0.16f, 255)
+            val cMid = purple(hue, 0.9f, 0.55f, 255)
+            val cBot = purple(hue + 16f, 0.85f, 0.28f, 255)
+            val mid = 0.45f + 0.18f * sin(t * 0.7f)
+            val base = Paint().apply {
+                shader = LinearGradient(
+                    0f, 0f,
+                    w * (0.5f + 0.5f * sin(t * 0.5f)),
+                    h,
+                    intArrayOf(cTop, cMid, cBot),
+                    floatArrayOf(0f, mid.coerceIn(0.12f, 0.85f), 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            c.drawRect(0f, 0f, w, h, base)
+
+            // brilho 1: violeta claro orbitando rápido no topo
+            val ox1 = w * (0.5f + 0.38f * sin(t * 0.9f))
+            val oy1 = h * (0.25f + 0.14f * cos(t * 0.75f))
+            val r1 = w * 0.7f
+            val glow1 = Paint().apply {
+                shader = RadialGradient(
+                    ox1, oy1, r1,
+                    intArrayOf(Color.argb(120, 192, 132, 252), Color.TRANSPARENT),
+                    floatArrayOf(0f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            c.drawCircle(ox1, oy1, r1, glow1)
+
+            // brilho 2: rosa orbitando na base (desencontrado do 1)
+            val ox2 = w * (0.5f + 0.38f * cos(t * 0.62f + 1.5f))
+            val oy2 = h * (0.72f + 0.14f * sin(t * 0.68f + 0.7f))
+            val r2 = w * 0.8f
+            val glow2 = Paint().apply {
+                shader = RadialGradient(
+                    ox2, oy2, r2,
+                    intArrayOf(Color.argb(100, 240, 120, 200), Color.TRANSPARENT),
+                    floatArrayOf(0f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            c.drawCircle(ox2, oy2, r2, glow2)
+
+            // brilho 3: feixe varrendo a tela (vai e volta) — dá o "movimento" óbvio
+            val sx = w * (0.5f + 0.55f * sin(t * 0.45f))
+            val sweep = Paint().apply {
+                shader = LinearGradient(
+                    sx - w * 0.35f, 0f, sx + w * 0.35f, 0f,
+                    intArrayOf(Color.TRANSPARENT, Color.argb(55, 255, 255, 255), Color.TRANSPARENT),
+                    floatArrayOf(0f, 0.5f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            c.drawRect(0f, 0f, w, h, sweep)
+
+            // partículas subindo com cintilação
+            val dot = Paint(Paint.ANTI_ALIAS_FLAG)
+            for (s in stars) {
+                val yy = ((s.fy - t * s.sp) % 1f + 1f) % 1f
+                val tw = 0.5f + 0.5f * sin(t * 2.2f + s.ph)
+                dot.color = Color.argb((60 + 140 * tw).toInt(), 230, 220, 255)
+                c.drawCircle(s.fx * w, yy * h, s.r, dot)
+            }
+        }
+
+        private fun drawCover(c: Canvas, bmp: Bitmap?, dst: RectF, radius: Float) {
+            if (bmp == null) return
+            val path = Path().apply { addRoundRect(dst, radius, radius, Path.Direction.CW) }
+            c.save()
+            c.clipPath(path)
+            val bw = bmp.width.toFloat()
+            val bh = bmp.height.toFloat()
+            val scale = maxOf(dst.width() / bw, dst.height() / bh)
+            val dw = bw * scale
+            val dh = bh * scale
+            val left = dst.centerX() - dw / 2f
+            val top = dst.centerY() - dh / 2f
+            c.drawBitmap(bmp, null, RectF(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG))
+            c.restore()
+        }
+
         private fun draw(c: Canvas) {
             val w = c.width.toFloat()
             val h = c.height.toFloat()
+            val t = (SystemClock.uptimeMillis() - startTime) / 1000f
 
-            // Fundo gradiente escuro
-            val bg = Paint().apply {
-                shader = LinearGradient(0f, 0f, 0f, h,
-                    Color.parseColor("#0B1020"),
-                    Color.parseColor("#1E1B4B"),
-                    Shader.TileMode.CLAMP)
-            }
-            c.drawRect(0f, 0f, w, h, bg)
+            drawAnimatedPurpleBackground(c, w, h, t)
 
             val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
@@ -92,7 +217,7 @@ class CountdownWallpaperService : WallpaperService() {
                 textAlign = Paint.Align.CENTER
             }
             val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor("#CBD5E1")
+                color = Color.parseColor("#DDD6FE")
                 textSize = w * 0.038f
                 textAlign = Paint.Align.CENTER
             }
@@ -102,7 +227,9 @@ class CountdownWallpaperService : WallpaperService() {
                 isFakeBoldText = true
                 textAlign = Paint.Align.CENTER
             }
-            val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(200, 30, 16, 60)
+            }
             val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
                 textSize = w * 0.045f
@@ -113,6 +240,10 @@ class CountdownWallpaperService : WallpaperService() {
                 color = Color.parseColor("#E2E8F0")
                 textSize = w * 0.035f
                 textAlign = Paint.Align.LEFT
+            }
+            val emojiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = w * 0.09f
+                textAlign = Paint.Align.CENTER
             }
 
             // Título topo
@@ -127,12 +258,21 @@ class CountdownWallpaperService : WallpaperService() {
             eventos.forEachIndexed { i, ev ->
                 val y0 = top + i * cardH
                 val rect = RectF(margin, y0 + 10, w - margin, y0 + cardH - 10)
-                cardPaint.color = Color.parseColor("#1F2937")
                 c.drawRoundRect(rect, 32f, 32f, cardPaint)
 
                 // barra lateral colorida
                 val barPaint = Paint().apply { color = ev.cor }
                 c.drawRoundRect(RectF(rect.left, rect.top, rect.left + 14f, rect.bottom), 14f, 14f, barPaint)
+
+                // miniatura da capa (foto) à esquerda
+                val thumbSize = cardH - 44f
+                val thumbRect = RectF(rect.left + 28f, rect.top + 22f, rect.left + 28f + thumbSize, rect.top + 22f + thumbSize)
+                val bmp = getCover(ev.coverRes)
+                if (bmp != null) {
+                    drawCover(c, bmp, thumbRect, 20f)
+                } else {
+                    c.drawText(ev.emoji, thumbRect.centerX(), thumbRect.centerY() + emojiPaint.textSize * 0.35f, emojiPaint)
+                }
 
                 val dias = diasFaltam(ev.data)
                 val textoDias = when {
@@ -142,9 +282,9 @@ class CountdownWallpaperService : WallpaperService() {
                     else -> "JÁ SAIU!"
                 }
 
-                // emoji + titulo
-                c.drawText("${ev.emoji}  ${ev.titulo}", rect.left + 32f, rect.top + cardH * 0.32f, labelPaint)
-                c.drawText(ev.subtitulo, rect.left + 32f, rect.top + cardH * 0.55f, datePaint)
+                val textX = thumbRect.right + 20f
+                c.drawText(ev.titulo, textX, rect.top + cardH * 0.32f, labelPaint)
+                c.drawText(ev.subtitulo, textX, rect.top + cardH * 0.55f, datePaint)
 
                 // dias grandes à direita
                 val oldAlign = daysPaint.textAlign
