@@ -17,13 +17,14 @@ import kotlin.math.roundToInt
 class CountdownWallpaperService : WallpaperService() {
     override fun onCreateEngine(): Engine = CountdownEngine()
 
+    private data class Evento(val titulo: String, val subtitulo: String, val data: LocalDate, val emoji: String, val cor: Int)
+
     inner class CountdownEngine : Engine() {
         private val handler = Handler(Looper.getMainLooper())
         private var visible = false
 
         // ===== DATAS ALVO - edite aqui se mudar =====
         // Hoje de referência: 15/10/2026
-        data class Evento(val titulo: String, val subtitulo: String, val data: LocalDate, val emoji: String, val cor: Int)
 
         private val eventos = listOf(
             Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6")),

@@ -1,0 +1,158 @@
+COMO COMPILAR O APK SEM BAIXAR O ANDROID STUDIO
+================================================
+Android Studio = ~1,5 GB. As opcoes abaixo usam 0-500 MB.
+
+Este projeto precisa de: JDK 17 + Android SDK (platform 34 + build-tools 34.0.0) + Gradle 8.7.
+(AGP 8.5.2 / Kotlin 1.9.24 / compileSdk 34 / minSdk 26)
+
+RESUMO RAPIDO
+-------------
+Opcao 1 - GitHub Actions .... Dificuldade: FACIL (1/5) .... Tamanho: 0 MB .... Melhor custo-beneficio
+Opcao 2 - Linha de comando .. Dificuldade: MEDIA (3/5) .... Tamanho: ~400 MB .. Controle total no PC
+Opcao 3 - VS Code + SDK ..... Dificuldade: MEDIA (3/5) .... Tamanho: ~500 MB .. Conforto para editar codigo
+Opcao 4 - Termux no celular . Dificuldade: DIFICIL (5/5) ... Tamanho: ~600 MB . Sem PC
+Opcao 5 - Sem compilar ...... Dificuldade: MUITO FACIL (0/5) Tamanho: 0 MB .... So teste visual
+
+
+OPCAO 1 - GITHUB ACTIONS (0 MB, nada para instalar) - RECOMENDADO
+----------------------------------------------------------------
+Este repositorio ja esta configurado (.github/workflows/build-apk.yml).
+1. Suba o codigo: git add -A ; git commit -m "build" ; git push
+2. No GitHub abra: Actions > Build Wallpaper APK > ultimo run
+3. Baixe o artefato: countdown-wallpaper-apk (app-debug.apk dentro)
+4. Passe pro celular e instale.
+
+Vantagens:
++ Nada para instalar, funciona em PC fraco
++ Build sempre limpo e repetivel (mesmo JDK/SDK/licencas)
++ Otimo para quem so quer o APK final
++ Gratis (cota generosa para repo publico/privado pequeno)
+
+Desvantagens:
+- Precisa de internet + conta GitHub
+- Cada teste leva 2-5 min (push + fila + build + download)
+- Logs sao mais chatos de ler que no PC
+- Limite de minutos/mes no plano gratis se compilar toda hora
+- Nao da para depurar com breakpoint / preview de layout
+
+Dificuldade: FACIL (1/5). So usar git push e baixar o zip.
+Para quem e: voce quer o APK pronto sem instalar nada.
+
+
+OPCAO 2 - WINDOWS SO LINHA DE COMANDO (~400 MB)
+-----------------------------------------------
+1. Instale o JDK 17 (se nao tem):
+   winget install EclipseAdoptium.Temurin.17.JDK
+
+2. Baixe so o "Command line tools only" em:
+   https://developer.android.com/studio#command-line-tools-only
+   (arquivo commandlinetools-win-*.zip, ~130 MB)
+
+3. Descompacte assim (a pasta dupla e obrigatoria):
+   C:\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat
+   Dica: o zip vem com pasta cmdline-tools dentro, renomeie para latest.
+
+4. No PowerShell configure o SDK:
+   [Environment]::SetEnvironmentVariable("ANDROID_HOME","C:\Android\Sdk","User")
+   [Environment]::SetEnvironmentVariable("ANDROID_SDK_ROOT","C:\Android\Sdk","User")
+   $env:ANDROID_HOME="C:\Android\Sdk"
+   $env:ANDROID_SDK_ROOT="C:\Android\Sdk"
+   $env:Path="C:\Android\Sdk\cmdline-tools\latest\bin;C:\Android\Sdk\platform-tools;$env:Path"
+
+5. Instale as plataformas e aceite as licencas:
+   sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+   (no PowerShell sem o comando yes, use: 1..50 | ForEach { "y" } | sdkmanager --licenses)
+
+6. Instale o Gradle 8.7:
+   winget install Gradle.Gradle --version 8.7
+   ou baixe o binario em https://gradle.org/releases/ e ponha no Path.
+
+7. Compile nesta pasta:
+   gradle :app:assembleDebug --stacktrace
+   O APK sai em: app\build\outputs\apk\debug\app-debug.apk
+
+Vantagens:
++ Bem mais leve que o Studio (~400 MB vs ~1,5 GB)
++ Build rapido depois da 1a vez (daemon + cache), ideal para iterar
++ Voce aprende o que o Studio faz por baixo (sdkmanager, licencas, Gradle)
++ Funciona offline depois de tudo baixado
+
+Desvantagens:
+- Instalacao manual chata (PATH, ANDROID_HOME, pasta latest, licencas)
+- Sem editor visual, sem assistente de erros, sem emulador
+- Erros de versao (Java/Gradle/AGP/build-tools) caem no seu colo
+- No PowerShell o "yes | sdkmanager" nao existe, precisa do truque acima
+
+Dificuldade: MEDIA (3/5). A instalacao cobra; depois e so um comando.
+Para quem e: voce quer compilar rapido no PC e nao tem espaco para o Studio.
+
+
+OPCAO 3 - VS CODE + SDK MINIMO (sem Studio)
+-------------------------------------------
+1. Instale: VS Code + extensao "Gradle for Java" + JDK 17.
+2. Faca os passos 2 a 5 da Opcao 2 (so cmdline-tools).
+3. Abra esta pasta no VS Code e rode no terminal: gradle :app:assembleDebug
+
+Vantagens:
++ Leve e rapido, bom para editar Kotlin/XML com autocomplete basico
++ Terminal integrado + extensoes Gradle/Java
++ Mesmo build da Opcao 2, mas com conforto de IDE
+
+Desvantagens:
+- Continua sem layout preview, sem emulador, sem wizards do Studio
+- Extensao Gradle as vezes briga com versao do Java/Gradle
+- Voce ainda faz todo o setup do SDK na mao (igual Opcao 2)
+
+Dificuldade: MEDIA (3/5). Igual a Opcao 2 + instalar 1 extensao.
+Para quem e: voce vai mexer no codigo (datas, layout) e quer editor bom sem peso do Studio.
+
+
+OPCAO 4 - TERMUX (compila direto no celular, avancado)
+------------------------------------------------------
+1. No celular instale o Termux da F-Droid.
+2. No Termux:
+   pkg install openjdk-17 gradle unzip wget
+   (SDK Android no Termux e chato: precisa do sdkmanager + aapt2 manuais)
+
+Vantagens:
++ Dispensa PC totalmente
++ Legal como experimento / emergencia
+
+Desvantagens:
+- Muito lento, esquenta e come bateria/armazenamento (~600 MB+)
+- SDK/build-tools oficiais nao sao feitos para ARM/Termux: aapt2, licencas e CMake dao erro facil
+- Sem editor decente, sem emulador, debug quase impossivel
+- Grande chance de travar no meio do build
+
+Dificuldade: DIFICIL (5/5). So tente se nao tiver PC.
+Para quem e: curiosidade ou ultimo recurso. Para uso real prefira Opcao 1 ou 5.
+
+
+OPCAO 5 - SEM COMPILAR (teste agora)
+------------------------------------
+1. Abra preview.html no Chrome do celular.
+2. Instale "HTML Live Wallpaper" ou "KLWP" da Play Store.
+3. Aponte para o preview.html. Vira papel de parede com a contagem.
+
+Vantagens:
++ Instantaneo, 0 instalacao, 0 build
++ Perfeito para testar datas/layout antes de gerar o APK
+
+Desvantagens:
+- Nao gera APK de verdade (depende de app terceiro)
+- Pode gastar mais bateria que wallpaper nativo
+- Recursos de wallpaper real (scroll, toque, preview nas Configuracoes) nao funcionam igual
+- Nao serve para publicar na Play Store
+
+Dificuldade: MUITO FACIL (0/5).
+Para quem e: voce so quer ver/usar a contagem agora, sem compilar.
+
+
+ERROS COMUNS
+------------
+- sdkmanager: comando nao encontrado -> use o caminho cheio:
+  C:\Android\Sdk\cmdline-tools\latest\bin\sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+- Could not set unknown property 'isMinifyEnabled' -> arquivo .gradle usa sintaxe Groovy (minifyEnabled false), nao Kotlin (isMinifyEnabled = false). Ja corrigido neste repo.
+- android.useAndroidX is not enabled -> precisa de gradle.properties com android.useAndroidX=true. Ja criado neste repo.
+- android:exported needs to be specified -> no AndroidManifest.xml ponha android:exported="true" no service com intent-filter. Ja corrigido neste repo.
+- Licencas: rode sdkmanager --licenses (no PowerShell: 1..50 | ForEach { "y" } | sdkmanager --licenses).
