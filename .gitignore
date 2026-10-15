@@ -1,0 +1,28 @@
+# Gradle / build
+.gradle/
+build/
+app/build/
+**/build/
+
+# APKs gerados (baixe pelo Actions ou compile local)
+*.apk
+*.aab
+*.ap_
+
+# Config local (caminho do SDK da sua máquina — não commitar)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sistema
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temp
+*.tmp
+*.log

@@ -16,7 +16,6 @@ import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import androidx.core.content.ContextCompat
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -85,11 +84,6 @@ class CountdownWallpaperService : WallpaperService() {
         override fun onSurfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
             drawFrame()
-        }
-
-        private fun diasFaltam(alvo: LocalDate): Long {
-            val hoje = LocalDate.now()
-            return ChronoUnit.DAYS.between(hoje, alvo)
         }
 
         private fun getCover(resId: Int): Bitmap? {
@@ -328,13 +322,8 @@ class CountdownWallpaperService : WallpaperService() {
                     c.drawText(ev.emoji, thumbRect.centerX(), thumbRect.centerY() + emojiPaint.textSize * 0.35f, emojiPaint)
                 }
 
-                val dias = diasFaltam(ev.data)
-                val textoDias = when {
-                    dias > 1 -> "$dias DIAS"
-                    dias == 1L -> "AMANHÃ!"
-                    dias == 0L -> "É HOJE!"
-                    else -> "JÁ SAIU!"
-                }
+                val dias = CountdownLogic.diasFaltam(LocalDate.now(), ev.data)
+                val textoDias = CountdownLogic.textoDias(dias)
 
                 val textX = thumbRect.right + 20f
                 c.drawText(ev.titulo, textX, rect.top + cardH * 0.32f, labelPaint)
