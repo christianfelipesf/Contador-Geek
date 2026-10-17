@@ -2,9 +2,13 @@
 <!-- Español -->
 <resources>
 
+    <!-- ============ app (el nombre también se traduce) ============ -->
+    <string name="app_name">Contador Geek</string>
+    <string name="wallpaper_name">Contador Geek - Doomsday / GTA6 / Vision / Zelda</string>
     <string name="wallpaper_desc">Fondo de pantalla animado de cuenta atrás con degradado morado: Vision Quest, Zelda OOT, GTA 6 y Vengadores Doomsday.</string>
 
     <!-- ============ fondo de pantalla ============ -->
+    <string name="wp_titulo">CONTADOR GEEK</string>
     <string name="wp_faltam">FALTAN</string>
     <string name="wp_rodape">Se actualiza solo cada día</string>
     <plurals name="wp_dias">
@@ -24,7 +28,7 @@
     <string name="cfg_sub">Vision Quest • Zelda OOT • GTA 6 • Vengadores Doomsday</string>
     <string name="cfg_previa">Vista previa en vivo:</string>
     <string name="cfg_definir">Establecer como fondo de pantalla</string>
-    <string name="cfg_dica">O mantén pulsado en la pantalla de inicio &gt; Fondo de pantalla &gt; Fondos animados &gt; Countdown Geek</string>
+    <string name="cfg_dica">O mantén pulsado en la pantalla de inicio &gt; Fondo de pantalla &gt; Fondos animados &gt; Contador Geek</string>
 
     <string name="sec_economia">Ahorro de batería</string>
     <string name="cfg_saver">Modo ahorro (consumo mínimo, sin calentar el teléfono)</string>
@@ -76,6 +80,6 @@
 
     <string name="sec_idioma">Idioma</string>
     <string name="cfg_idioma_sistema">Predeterminado del sistema</string>
-    <string name="cfg_idioma_antigo">Para cambiar el idioma de la app, abre Ajustes &gt; Aplicaciones &gt; Countdown Geek &gt; Idioma (Android 13+ / One UI 5+).</string>
+    <string name="cfg_idioma_antigo">Para cambiar el idioma de la app, abre Ajustes &gt; Aplicaciones &gt; Contador Geek &gt; Idioma (Android 13+ / One UI 5+).</string>
 
 </resources>
