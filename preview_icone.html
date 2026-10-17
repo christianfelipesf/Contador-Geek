@@ -60,19 +60,15 @@ const DEFS = `
 </defs>`;
 
 function content() {
+  // Mesmos paths de ic_launcher_foreground.xml (foguete)
   return `
   <rect x="0" y="0" width="108" height="108" fill="url(#bg)"/>
-  <circle cx="54" cy="54" r="32" fill="#ffffff" fill-opacity="0.24"/>
-  <g stroke="#C4B5FD" stroke-width="4.5" stroke-linecap="round">
-    <line x1="54" y1="33.5" x2="54" y2="38.5"/>
-    <line x1="74.5" y1="54" x2="69.5" y2="54"/>
-    <line x1="54" y1="74.5" x2="54" y2="69.5"/>
-    <line x1="33.5" y1="54" x2="38.5" y2="54"/>
-  </g>
-  <circle cx="54" cy="54" r="27" fill="none" stroke="#ffffff" stroke-width="6.5"/>
-  <line x1="54" y1="54" x2="54" y2="42" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
-  <line x1="54" y1="54" x2="68" y2="60" stroke="#F0ABFC" stroke-width="6.5" stroke-linecap="round"/>
-  <circle cx="54" cy="54" r="4.5" fill="#ffffff"/>`;
+  <path fill="#ffffff" fill-rule="evenodd"
+        d="M54,21 C60,28 64,37 64,47 L64,63 C64,65 62,67 60,67 L48,67 C46,67 44,65 44,63 L44,47 C44,37 48,28 54,21 Z
+           M48.5,42 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0"/>
+  <path fill="#ffffff" d="M44,48 L32,64 L44,64 Z"/>
+  <path fill="#ffffff" d="M64,48 L76,64 L64,64 Z"/>
+  <path fill="#F0ABFC" d="M54,83 C50,76 47,71 47,67 L61,67 C61,71 58,76 54,83 Z"/>`;
 }
 
 function icon(size, clip) {

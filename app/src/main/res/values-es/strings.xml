@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Español -->
+<resources>
+
+    <string name="wallpaper_desc">Fondo de pantalla animado de cuenta atrás con degradado morado: Vision Quest, Zelda OOT, GTA 6 y Vengadores Doomsday.</string>
+
+    <!-- ============ fondo de pantalla ============ -->
+    <string name="wp_faltam">FALTAN</string>
+    <string name="wp_rodape">Se actualiza solo cada día</string>
+    <plurals name="wp_dias">
+        <item quantity="one">%1$d DÍA</item>
+        <item quantity="other">%1$d DÍAS</item>
+    </plurals>
+    <string name="wp_amanha">¡MAÑANA!</string>
+    <string name="wp_hoje">¡ES HOY!</string>
+    <string name="wp_ja_saiu">¡YA SALIÓ!</string>
+
+    <!-- ============ eventos ============ -->
+    <string name="ev_vision_sub">Ep 3 y 4 - Disney+</string>
+    <string name="ev_doomsday_titulo">VENGADORES DOOMSDAY</string>
+    <string name="ev_doomsday_sub">Cine - %1$s</string>
+
+    <!-- ============ ajustes ============ -->
+    <string name="cfg_sub">Vision Quest • Zelda OOT • GTA 6 • Vengadores Doomsday</string>
+    <string name="cfg_previa">Vista previa en vivo:</string>
+    <string name="cfg_definir">Establecer como fondo de pantalla</string>
+    <string name="cfg_dica">O mantén pulsado en la pantalla de inicio &gt; Fondo de pantalla &gt; Fondos animados &gt; Countdown Geek</string>
+
+    <string name="sec_economia">Ahorro de batería</string>
+    <string name="cfg_saver">Modo ahorro (consumo mínimo, sin calentar el teléfono)</string>
+    <string name="cfg_saver_on">Ahorro activado (fondo quieto, ~0,5 fps)</string>
+    <string name="cfg_saver_off">Ahorro desactivado</string>
+    <string name="cfg_saver_desc">Congela la animación del fondo, apaga las estrellas y el resalte de las tarjetas, y solo redibuja cada 2 segundos (lo justo para que cambie el día). El aspecto sigue igual - solo deja de moverse. Tus ajustes se conservan.</string>
+
+    <string name="sec_animacao">Animación</string>
+    <string name="cfg_velocidade">Velocidad: %1$d%%</string>
+    <string name="cfg_fluidez">Fluidez: %1$s</string>
+    <string name="cfg_particulas">Partículas: %1$d</string>
+    <string-array name="fps_nomes">
+        <item>Rendimiento ~60fps</item>
+        <item>Equilibrio ~30fps (recomendado)</item>
+        <item>Eco ~20fps</item>
+        <item>Super eco ~15fps</item>
+    </string-array>
+
+    <string name="sec_selecao">Selección de tarjetas</string>
+    <string name="cfg_hover">Resaltar una tarjeta a la vez</string>
+    <string name="cfg_hover_ms">Tiempo por tarjeta: %1$ds</string>
+    <string name="cfg_hover_tr">Transición entre tarjetas: %1$dms</string>
+    <string name="cfg_zoom">La tarjeta crece al seleccionarla (zoom)</string>
+
+    <string name="sec_banners">Banners de fondo</string>
+    <string name="cfg_banners">Banners geek de fondo (morado encima)</string>
+    <string name="cfg_banner_ms">Tiempo por banner: %1$ds</string>
+    <string name="cfg_banner_tr">Transición entre banners: %1$dms</string>
+    <string name="cfg_pan_parado">Desplazamiento lateral: parado</string>
+    <string name="cfg_pan">Desplazamiento lateral: %1$d px/s</string>
+    <string name="cfg_shade">Cobertura morada: %1$d%%</string>
+
+    <string name="sec_cores">Colores del fondo (arriba / medio / abajo)</string>
+    <string name="cfg_hex">Color personalizado (hex, ej: #6D28D9):</string>
+    <string name="cfg_aplicar">Aplicar colores</string>
+    <string name="cfg_restaurar">Restaurar valores</string>
+    <string name="cfg_tema_aplicado">Tema %1$s aplicado</string>
+    <string name="cfg_cores_aplicadas">Colores aplicados</string>
+    <string name="cfg_hex_invalido">¡Hex inválido! Ej: #6D28D9</string>
+    <string name="cfg_versao">Versión %1$s (%2$d)</string>
+    <string-array name="temas_nomes">
+        <item>Morado</item>
+        <item>Océano</item>
+        <item>Fuego</item>
+        <item>Verde</item>
+        <item>Atardecer</item>
+        <item>Medianoche</item>
+    </string-array>
+
+    <string name="sec_idioma">Idioma</string>
+    <string name="cfg_idioma_sistema">Predeterminado del sistema</string>
+    <string name="cfg_idioma_antigo">Para cambiar el idioma de la app, abre Ajustes &gt; Aplicaciones &gt; Countdown Geek &gt; Idioma (Android 13+ / One UI 5+).</string>
+
+</resources>

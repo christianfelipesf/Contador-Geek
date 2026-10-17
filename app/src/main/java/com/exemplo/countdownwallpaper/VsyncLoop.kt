@@ -64,7 +64,8 @@ class VsyncLoop(
 
     private fun dispatchIfDue() {
         val now = SystemClock.uptimeMillis()
-        val target = settings().targetFrameMs.coerceIn(16L, 100L)
+        // 16ms (60fps) .. 2000ms (modo economizador: quase parado).
+        val target = settings().targetFrameMs.coerceIn(16L, 2000L)
         if (lastDrawMs != 0L && now - lastDrawMs < target) return
         lastDrawMs = now
         // Desenha na GL thread; nunca bloqueia a main.

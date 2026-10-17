@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup/Smart Switch (até Android 11): leva as configurações do usuário. -->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+</full-backup-content>

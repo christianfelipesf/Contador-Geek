@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Celular em pé (caso padrão). -->
+<resources>
+    <dimen name="espaco_tela">24dp</dimen>
+    <dimen name="espaco_previa_baixo">8dp</dimen>
+    <dimen name="previa_altura">200dp</dimen>
+    <!-- Sem esticar a prévia além disso (num tablet ela fica centralizada). -->
+    <dimen name="previa_largura_max">480dp</dimen>
+
+    <dimen name="txt_titulo">24sp</dimen>
+    <dimen name="txt_subtitulo">13sp</dimen>
+    <dimen name="txt_secao">15sp</dimen>
+    <dimen name="txt_rotulo">13sp</dimen>
+    <dimen name="txt_ajuda">12sp</dimen>
+    <dimen name="txt_versao">12sp</dimen>
+    <dimen name="txt_campo_cor">13sp</dimen>
+</resources>

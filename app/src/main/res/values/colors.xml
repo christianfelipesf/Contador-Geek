@@ -2,4 +2,23 @@
 <resources>
     <!-- Roxo do ícone do launcher (usado como fallback / tema). -->
     <color name="ic_launcher_background">#4C1D95</color>
+
+    <!-- ===== tela de configurações (sempre no escuro: identidade do app) ===== -->
+    <color name="tema_fundo">#0B1020</color>
+    <color name="texto">#FFFFFF</color>
+    <color name="texto_secundario">#CBD5E1</color>
+    <color name="texto_terciario">#94A3B8</color>
+    <color name="texto_quaternario">#64748B</color>
+    <color name="destaque">#A78BFA</color>
+
+    <!-- ===== textos do papel de parede (assados nos bitmaps) ===== -->
+    <color name="wp_secundario">#E2E8F0</color>
+    <color name="wp_cabecalho">#DDD6FE</color>
+    <color name="wp_horas">#C4B5FD</color>
+
+    <!-- ===== cor de cada evento ===== -->
+    <color name="ev_vision">#8B5CF6</color>
+    <color name="ev_zelda">#22C55E</color>
+    <color name="ev_gta">#F59E0B</color>
+    <color name="ev_doomsday">#EF4444</color>
 </resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tablet / tela grande (>= 600dp de largura): mais respiro e texto maior,
+  pra não ficar tudo espremido no canto de uma tela de 10".
+-->
+<resources>
+    <dimen name="espaco_tela">40dp</dimen>
+    <dimen name="espaco_previa_baixo">12dp</dimen>
+    <dimen name="previa_altura">320dp</dimen>
+    <dimen name="previa_largura_max">420dp</dimen>
+
+    <dimen name="txt_titulo">32sp</dimen>
+    <dimen name="txt_subtitulo">17sp</dimen>
+    <dimen name="txt_secao">20sp</dimen>
+    <dimen name="txt_rotulo">17sp</dimen>
+    <dimen name="txt_ajuda">15sp</dimen>
+    <dimen name="txt_versao">15sp</dimen>
+    <dimen name="txt_campo_cor">17sp</dimen>
+</resources>

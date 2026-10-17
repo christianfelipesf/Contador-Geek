@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Versão monocromática (ícones temáticos do Android 13+): só a
-     silhueta do relógio, em branco puro. -->
+<!-- Versão monocromática (ícones temáticos do Android 13+): silhueta do
+     foguete em branco puro, com a janela vazada. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="7"
-        android:pathData="M54,54 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M54,54 L54,42" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M54,54 L68,60" />
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M54,21 C60,28 64,37 64,47 L64,63 C64,65 62,67 60,67 L48,67 C46,67 44,65 44,63 L44,47 C44,37 48,28 54,21 Z M48.5,42 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M49.5,54 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
+        android:pathData="M44,48 L32,64 L44,64 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64,48 L76,64 L64,64 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,83 C50,76 47,71 47,67 L61,67 C61,71 58,76 54,83 Z" />
 </vector>

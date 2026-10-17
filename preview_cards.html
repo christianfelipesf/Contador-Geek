@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Countdown Geek — prévia das telas</title>
+<style>
+  body{margin:0;padding:24px 16px 60px;background:#0B1020;color:#fff;
+       font-family:"Segoe UI",Roboto,Arial,sans-serif}
+  h1{font-size:20px;margin:0 0 4px}
+  p.note{font-size:13px;color:#94A3B8;margin:0 0 20px;max-width:760px;line-height:1.5}
+  .grade{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+  .item{background:#111731;border:1px solid #241a4d;border-radius:14px;padding:12px}
+  .item h2{font-size:13px;margin:0 0 8px;color:#A78BFA;font-weight:600}
+  .item canvas{display:block;background:#000;border-radius:6px;box-shadow:0 6px 20px #0008}
+  .item small{display:block;margin-top:8px;color:#94A3B8;font-size:11px;line-height:1.45}
+</style>
+</head>
+<body>
+<h1>Countdown Geek — layout responsivo</h1>
+<p class="note">Desenhado com as <b>mesmas proporções</b> do app (largura/altura reais de cada
+aparelho, reduzidas na tela pra caber aqui). Retrato = 1 coluna; a partir de 1,1:1
+(paisagem, tablet deitado, dobrável aberto) vira 2 colunas × 2 linhas. Quinas,
+barrinha colorida, trecho escuro do "quanto falta" e o traço marcador escalam junto.</p>
+<div class="grade" id="grade"></div>
+
+<script>
+// ===== mesma lógica do CountdownLogic.kt =====
+const inicio = new Date(2026, 9, 15);            // 15/10/2026
+const alvos  = [new Date(2026,9,21), new Date(2026,10,5), new Date(2026,10,19), new Date(2026,11,18)];
+const eventos = [
+  { emoji:"👁",  nome:"VISION QUEST",        sub:"Ep 3 e 4 - Disney+",      i:0, cor:"#8B5CF6" },
+  { emoji:"🗡️", nome:"ZELDA OOT REMAKE",     sub:"Switch 2 - 05/11",        i:1, cor:"#22C55E" },
+  { emoji:"🚗", nome:"GTA 6",                sub:"PS5 / Xbox - 19/11",      i:2, cor:"#F59E0B" },
+  { emoji:"🛡️", nome:"VINGADORES DOOMSDAY",  sub:"Cinema - 18/12",          i:3, cor:"#EF4444" }
+];
+const DIAS = ["DIAS"], MS = 86400000;
+const meiaNoite = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function conta(ev){
+  const agora = new Date();
+  const alvo = meiaNoite(alvos[ev.i]);
+  const hoje = meiaNoite(agora);
+  const dias = Math.round((alvo - hoje) / MS);
+  const txt = dias > 1 ? `${dias} DIAS` : dias === 1 ? "AMANHÃ!" : dias === 0 ? "É HOJE!" : "JÁ SAIU!";
+  const min = Math.floor((alvo - agora) / 60000);
+  const h = min > 0 ? Math.floor(min/60) - (dias-1)*24 : 0;
+  const horas = h > 0 ? `${h}h` : "";
+  const total = alvos[ev.i] - inicio;
+  const fr = Math.max(0, Math.min(1, (alvos[ev.i] - agora) / total));
+  return { txt, horas, fr, dias };
+}
+
+// ===== layout do CountdownWallpaperService.rebakeAll() =====
+function layout(W, H){
+  const paisagem = W / H >= 1.1;
+  const colunas = paisagem ? 2 : 1;
+  const linhas = Math.ceil(eventos.length / colunas);
+  const gapX = colunas > 1 ? W * 0.03 : 0;
+  const margin = W * (paisagem ? 0.06 : 0.12);
+  const cardH = (H * (paisagem ? 0.58 : 0.60)) / linhas;
+  const cardRealH = (cardH - 20) * 0.8;
+  const top = H * (paisagem ? 0.26 : 0.20);
+  const cw = Math.floor((W - margin*2 - gapX*(colunas-1)) / colunas);
+  const ch = Math.floor(cardRealH);
+  const padEsq = cw * 0.039, padDir = cw * 0.034, respiro = cw * 0.032;
+  const szCab = Math.min(W*0.038, H*0.024), szTitulo = Math.min(W*0.075, H*0.050);
+  const rects = eventos.map((_, i) => {
+    const col = i % colunas, lin = Math.floor(i / colunas);
+    const x = margin + col*(cw+gapX), y = top + lin*cardH + (cardH-cardRealH)/2;
+    return { x, y, w: cw, h: cardRealH };
+  });
+  return { paisagem, colunas, cw, ch, padEsq, padDir, respiro, szCab, szTitulo, rects, cardRealH };
+}
+
+function arredondado(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y,   x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x,   y+h, r);
+  ctx.arcTo(x,   y+h, x,   y,   r);
+  ctx.arcTo(x,   y,   x+w, y,   r);
+  ctx.closePath();
+}
+
+function desenha(canvas, W, H){
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const L = layoutData = layout(W, H);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#150826"); g.addColorStop(0.5, "#6D28D9"); g.addColorStop(1, "#2E1065");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // cabeçalho / rodapé
+  ctx.textAlign = "center"; ctx.fillStyle = "#DDD6FE";
+  ctx.font = `400 ${L.szCab}px "Segoe UI",Roboto,Arial,sans-serif`;
+  ctx.fillText("FALTAM", W/2, H*0.10);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `700 ${L.szTitulo}px "Segoe UI",Roboto,Arial,sans-serif`;
+  ctx.fillText("COUNTDOWN GEEK", W/2, H*0.145);
+  ctx.fillStyle = "#DDD6FE";
+  ctx.font = `400 ${L.szCab}px "Segoe UI",Roboto,Arial,sans-serif`;
+  ctx.fillText("Atualiza sozinho todo dia", W/2, H*0.965);
+
+  eventos.forEach((ev, i) => {
+    const r = L.rects[i];
+    const { txt, horas, fr } = conta(ev);
+    const raio = Math.max(6, Math.min(48, r.w * 0.039));
+    const barW = Math.max(3, Math.min(32, r.w * 0.017));
+
+    ctx.save();
+    arredondado(ctx, r.x, r.y, r.w, r.h, raio); ctx.clip();
+    ctx.fillStyle = "rgba(30,16,60,0.784)"; ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (fr > 0.001){
+      const fim = r.x + barW + (r.w - barW) * fr;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(r.x + barW, r.y, fim - r.x - barW, r.h);
+      if (fr > 0.02 && fr < 0.99){                 // traço marcador, altura cheia
+        ctx.fillStyle = ev.cor;
+        ctx.fillRect(fim - 1.5, r.y, 3, r.h);
+      }
+    }
+    ctx.fillStyle = ev.cor; ctx.fillRect(r.x, r.y, barW, r.h);   // barrinha por último
+    ctx.restore();
+
+    // título (com auto-ajuste) + subtítulo
+    let tSize = Math.min(r.w * 0.053, r.h * 0.25);
+    const titulo = `${ev.emoji}  ${ev.nome}`;
+    ctx.textAlign = "left";
+    ctx.font = `700 ${tSize}px "Segoe UI",Roboto,Arial,sans-serif`;
+    const maxTitulo = r.w * 0.64;
+    if (ctx.measureText(titulo).width > maxTitulo && maxTitulo > 40){
+      tSize = Math.max(tSize * maxTitulo / ctx.measureText(titulo).width, r.w * 0.032);
+      ctx.font = `700 ${tSize}px "Segoe UI",Roboto,Arial,sans-serif`;
+    }
+    const largTitulo = ctx.measureText(titulo).width;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(titulo, r.x + L.padEsq, r.y + r.h*0.30);
+    ctx.fillStyle = "#E2E8F0";
+    ctx.font = `400 ${Math.min(r.w*0.043, r.h*0.19)}px "Segoe UI",Roboto,Arial,sans-serif`;
+    ctx.fillText(ev.sub, r.x + L.padEsq, r.y + r.h*0.58);
+
+    // dias (direita) com auto-ajuste, e horas abaixo
+    let dSize = Math.min(txt.length > 7 ? r.w*0.059 : r.w*0.074, r.h*0.30);
+    ctx.font = `700 ${dSize}px "Segoe UI",Roboto,Arial,sans-serif`;
+    const livre = r.w - L.padEsq - largTitulo - L.respiro - L.padDir;
+    if (ctx.measureText(txt).width > livre && livre > 40){
+      dSize = Math.max(dSize * livre / ctx.measureText(txt).width, r.w * 0.032);
+      ctx.font = `700 ${dSize}px "Segoe UI",Roboto,Arial,sans-serif`;
+    }
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(txt, r.x + r.w - L.padDir, r.y + r.h*0.46);
+    if (horas){
+      ctx.fillStyle = "#C4B5FD";
+      ctx.font = `400 ${Math.min(r.w*0.041, r.h*0.18)}px "Segoe UI",Roboto,Arial,sans-serif`;
+      ctx.fillText(horas, r.x + r.w - L.padDir, r.y + r.h*0.72);
+    }
+  });
+}
+
+// ===== aparelhos de exemplo =====
+const aparelhos = [
+  { nome:"Celular pequeno (retrato)", W:480,  H:800,  css:200 },
+  { nome:"Galaxy A17 5G (retrato)",   W:1080, H:2340, css:200 },
+  { nome:"Tablet em pé",              W:1600, H:2560, css:250 },
+  { nome:"Tablet deitado",            W:2560, H:1600, css:430 },
+  { nome:"Dobrável aberto",           W:2208, H:1840, css:330 }
+];
+
+const grade = document.getElementById("grade");
+for (const a of aparelhos){
+  const item = document.createElement("div"); item.className = "item";
+  const h2 = document.createElement("h2"); h2.textContent = a.nome;
+  const cv = document.createElement("canvas");
+  cv.style.width = a.css + "px";
+  cv.style.height = (a.css * a.H / a.W) + "px";
+  const small = document.createElement("small");
+  const div = document.createElement("div"); div.appendChild(h2); div.appendChild(cv); div.appendChild(small);
+  item.appendChild(div); grade.appendChild(item);
+  desenha(cv, a.W, a.H);
+  const L = layoutData;
+  small.innerHTML = `${a.W}×${a.H} · ${L.colunas} coluna${L.colunas>1?"s":""} × ${Math.ceil(4/L.colunas)} linhas<br>` +
+    `card ${L.cw}×${Math.round(L.cardRealH)} px · quina ${Math.round(Math.max(6,Math.min(48,L.cw*0.039)))} px`;
+}
+</script>
+</body>
+</html>

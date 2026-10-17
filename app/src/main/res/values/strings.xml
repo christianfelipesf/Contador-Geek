@@ -1,6 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Idioma PADRÃO do app = inglês. É o fallback pra qualquer idioma que não
+  esteja em values-pt / values-es (o sistema escolhe o mais parecido).
+  Português fica em values-pt (cobre pt-BR, que é o do aparelho do usuário).
+-->
 <resources>
-    <string name="app_name">Countdown Wallpaper</string>
+
+    <!-- ============ app ============ -->
+    <string name="app_name">Countdown Geek</string>
     <string name="wallpaper_name">Countdown Geek - Doomsday / GTA6 / Vision / Zelda</string>
-    <string name="wallpaper_desc">Contagem regressiva animada com gradiente roxo: Vision Quest, Zelda OOT, GTA 6 e Vingadores Doomsday.</string>
+    <string name="wallpaper_desc">Animated countdown wallpaper with a purple gradient: Vision Quest, Zelda OOT, GTA 6 and Avengers Doomsday.</string>
+
+    <!-- ============ papel de parede (vira bitmap quando o dia vira) ============ -->
+    <string name="wp_faltam">LEFT</string>
+    <string name="wp_titulo">COUNTDOWN GEEK</string>
+    <string name="wp_rodape">Updates by itself every day</string>
+    <plurals name="wp_dias">
+        <item quantity="one">%1$d DAY</item>
+        <item quantity="other">%1$d DAYS</item>
+    </plurals>
+    <string name="wp_amanha">TOMORROW!</string>
+    <string name="wp_hoje">IT\'S TODAY!</string>
+    <string name="wp_ja_saiu">OUT NOW!</string>
+    <string name="wp_horas">%1$dh</string>
+
+    <!-- ============ eventos (a data é formatada pelo idioma do sistema) ============ -->
+    <string name="ev_vision_titulo">VISION QUEST</string>
+    <string name="ev_vision_sub">Ep 3 &amp; 4 - Disney+</string>
+    <string name="ev_zelda_titulo">ZELDA OOT REMAKE</string>
+    <string name="ev_zelda_sub">Switch 2 - %1$s</string>
+    <string name="ev_gta_titulo">GTA 6</string>
+    <string name="ev_gta_sub">PS5 / Xbox - %1$s</string>
+    <string name="ev_doomsday_titulo">AVENGERS DOOMSDAY</string>
+    <string name="ev_doomsday_sub">In cinemas - %1$s</string>
+
+    <!-- ============ tela de configurações ============ -->
+    <string name="cfg_sub">Vision Quest • Zelda OOT • GTA 6 • Avengers Doomsday</string>
+    <string name="cfg_previa">Live preview:</string>
+    <string name="cfg_definir">Set as wallpaper</string>
+    <string name="cfg_dica">Or long-press the home screen &gt; Wallpaper &gt; Live wallpapers &gt; Countdown Geek</string>
+
+    <string name="sec_economia">Battery saving</string>
+    <string name="cfg_saver">Power saver mode (minimal usage, no heating)</string>
+    <string name="cfg_saver_on">Power saver on (still background, ~0.5 fps)</string>
+    <string name="cfg_saver_off">Power saver off</string>
+    <string name="cfg_saver_desc">Freezes the background animation, turns off the stars and the card highlight, and redraws only every 2 seconds (just enough for the day to flip). The look stays the same - it just stops moving. Your settings are kept.</string>
+
+    <string name="sec_animacao">Animation</string>
+    <string name="cfg_velocidade">Speed: %1$d%%</string>
+    <string name="cfg_fluidez">Smoothness: %1$s</string>
+    <string name="cfg_particulas">Particles: %1$d</string>
+    <string-array name="fps_nomes">
+        <item>Performance ~60fps</item>
+        <item>Balanced ~30fps (recommended)</item>
+        <item>Eco ~20fps</item>
+        <item>Super eco ~15fps</item>
+    </string-array>
+
+    <string name="sec_selecao">Card selection</string>
+    <string name="cfg_hover">Highlight one card at a time</string>
+    <string name="cfg_hover_ms">Time on each card: %1$ds</string>
+    <string name="cfg_hover_tr">Transition between cards: %1$dms</string>
+    <string name="cfg_zoom">Card grows when selected (zoom)</string>
+
+    <string name="sec_banners">Background banners</string>
+    <string name="cfg_banners">Geek banners in the background (purple on top)</string>
+    <string name="cfg_banner_ms">Time on each banner: %1$ds</string>
+    <string name="cfg_banner_tr">Transition between banners: %1$dms</string>
+    <string name="cfg_pan_parado">Side pan: still</string>
+    <string name="cfg_pan">Side pan: %1$d px/s</string>
+    <string name="cfg_shade">Purple coverage: %1$d%%</string>
+
+    <string name="sec_cores">Background colors (top / middle / bottom)</string>
+    <string name="cfg_hex">Custom color (hex, e.g. #6D28D9):</string>
+    <string name="cfg_aplicar">Apply colors</string>
+    <string name="cfg_restaurar">Restore defaults</string>
+    <string name="cfg_tema_aplicado">%1$s theme applied</string>
+    <string name="cfg_cores_aplicadas">Colors applied</string>
+    <string name="cfg_hex_invalido">Invalid hex! E.g. #6D28D9</string>
+    <string name="cfg_versao">Version %1$s (%2$d)</string>
+    <string-array name="temas_nomes">
+        <item>Purple</item>
+        <item>Ocean</item>
+        <item>Fire</item>
+        <item>Green</item>
+        <item>Sunset</item>
+        <item>Midnight</item>
+    </string-array>
+
+    <string name="sec_idioma">Language</string>
+    <string name="cfg_idioma_sistema">System default</string>
+    <string name="cfg_idioma_antigo">To change the app language, open Settings &gt; Apps &gt; Countdown Geek &gt; Language (Android 13+ / One UI 5+).</string>
+
 </resources>

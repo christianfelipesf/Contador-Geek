@@ -13,7 +13,7 @@ data class RenderSettings(
     val targetFrameMs: Long = 33L, // equilíbrio 30fps; 16 = performance
     val particles: Int = 30,
     val hover: Boolean = true,
-    val hoverMs: Long = 3000L,
+    val hoverMs: Long = 9000L, // tempo parado por card (padrão 9s)
     val hoverTr: Long = 600L,
     val zoom: Boolean = true,
     val showBanners: Boolean = true,
@@ -23,7 +23,8 @@ data class RenderSettings(
     val bannerShade: Int = 68,
     val cTop: String = Prefs.DEF_TOP,
     val cMid: String = Prefs.DEF_MID,
-    val cBot: String = Prefs.DEF_BOT
+    val cBot: String = Prefs.DEF_BOT,
+    val saver: Boolean = false // modo economizador
 )
 
 class PrefsCache(private val appContext: Context) {
@@ -60,12 +61,12 @@ class PrefsCache(private val appContext: Context) {
                 rawFrame >= 50 -> 50L
                 else -> 33L
             }
-            RenderSettings(
+            val base = RenderSettings(
                 speed = prefs.getFloat(Prefs.SPEED, 1f).coerceIn(0.25f, 2f),
                 targetFrameMs = target.coerceIn(16L, 100L),
                 particles = prefs.getInt(Prefs.PARTICLES, 30).coerceIn(0, 80),
                 hover = prefs.getBoolean(Prefs.HOVER, true),
-                hoverMs = prefs.getLong(Prefs.HOVER_MS, 3000L).coerceAtLeast(1000L),
+                hoverMs = prefs.getLong(Prefs.HOVER_MS, 9000L).coerceAtLeast(1000L),
                 hoverTr = prefs.getLong(Prefs.HOVER_TR, 600L).coerceIn(0L, 2000L),
                 zoom = prefs.getBoolean(Prefs.ZOOM, true),
                 showBanners = prefs.getBoolean(Prefs.BANNERS, true),
@@ -75,10 +76,30 @@ class PrefsCache(private val appContext: Context) {
                 bannerShade = prefs.getInt(Prefs.BANNER_SHADE, 68).coerceIn(30, 95),
                 cTop = prefs.getString(Prefs.C_TOP, Prefs.DEF_TOP) ?: Prefs.DEF_TOP,
                 cMid = prefs.getString(Prefs.C_MID, Prefs.DEF_MID) ?: Prefs.DEF_MID,
-                cBot = prefs.getString(Prefs.C_BOT, Prefs.DEF_BOT) ?: Prefs.DEF_BOT
+                cBot = prefs.getString(Prefs.C_BOT, Prefs.DEF_BOT) ?: Prefs.DEF_BOT,
+                saver = prefs.getBoolean(Prefs.SAVER, false)
             )
+            if (base.saver) economia(base) else base
         } catch (e: Exception) {
             RenderSettings()
         }
     }
+
+    /**
+     * Modo economizador: sobrepõe os valores SÓ no snapshot (nada é gravado),
+     * então desligar volta exatamente pras configs que o usuário escolheu.
+     * - ~0,5 fps: praticamente só redesenha quando o dia vira;
+     * - zero estrelas (o hash por pixel é o maior custo do shader);
+     * - sem destaque/zoom animado dos cards;
+     * - banner parado, sem pan e sem troca.
+     */
+    private fun economia(base: RenderSettings): RenderSettings = base.copy(
+        targetFrameMs = 2000L,
+        particles = 0,
+        hover = false,
+        zoom = false,
+        bannerPan = 0,
+        bannerTr = 500L,
+        bannerMs = Long.MAX_VALUE / 4
+    )
 }

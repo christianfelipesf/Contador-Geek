@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tema da tela de ajustes.
+  Parent = Theme.DeviceDefault.NoActionBar: no Samsung (One UI) isso já resolve
+  pro visual nativo do sistema — checkbox, slider e spinner no estilo One UI, e
+  o colorAccent tinge tudo com o roxo do app. Em outros aparelhos cai no tema
+  escuro padrão do Android, que também combina com o fundo escuro do app.
+-->
+<resources>
+    <style name="Theme.CountdownGeek" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/tema_fundo</item>
+        <item name="android:colorAccent">@color/destaque</item>
+        <item name="android:colorControlActivated">@color/destaque</item>
+        <item name="android:statusBarColor">@color/tema_fundo</item>
+        <item name="android:navigationBarColor">@color/tema_fundo</item>
+    </style>
+</resources>

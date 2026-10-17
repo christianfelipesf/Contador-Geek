@@ -1,6 +1,7 @@
 package com.exemplo.countdownwallpaper
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.RectF
@@ -11,10 +12,13 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
 import android.service.wallpaper.WallpaperService
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.WindowManager
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.max
 import kotlin.math.sin
 
@@ -29,12 +33,64 @@ import kotlin.math.sin
  *   de fundo — nunca na main.
  */
 class CountdownWallpaperService : WallpaperService() {
-    override fun onCreateEngine(): Engine = CountdownEngine()
+
+    private var engineRef: CountdownEngine? = null
+
+    override fun onCreateEngine(): Engine = CountdownEngine().also { engineRef = it }
+
+    /**
+     * Idioma do app mudou (Ajustes do sistema, ou Ajustes > Apps > Idioma no
+     * Android 13+/One UI 5+): reassa os textos do wallpaper no idioma novo.
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        engineRef?.recarregarIdioma()
+    }
+
+    /** Eventos com nome/subtítulo/cor vindos dos recursos do idioma atual. */
+    private fun montarEventos(ctx: Context, inicio: LocalDate): List<Evento> {
+        fun sub(id: Int, data: LocalDate) = ctx.getString(id, dataCurta(ctx, data))
+        val vision = LocalDate.of(2026, 10, 21)
+        val zelda = LocalDate.of(2026, 11, 5)
+        val gta = LocalDate.of(2026, 11, 19)
+        val doom = LocalDate.of(2026, 12, 18)
+        return listOf(
+            Evento(
+                ctx.getString(R.string.ev_vision_titulo), ctx.getString(R.string.ev_vision_sub),
+                vision, inicio, "👁", ctx.getColor(R.color.ev_vision)
+            ),
+            Evento(
+                ctx.getString(R.string.ev_zelda_titulo), sub(R.string.ev_zelda_sub, zelda),
+                zelda, inicio, "🗡️", ctx.getColor(R.color.ev_zelda)
+            ),
+            Evento(
+                ctx.getString(R.string.ev_gta_titulo), sub(R.string.ev_gta_sub, gta),
+                gta, inicio, "🚗", ctx.getColor(R.color.ev_gta)
+            ),
+            Evento(
+                ctx.getString(R.string.ev_doomsday_titulo), sub(R.string.ev_doomsday_sub, doom),
+                doom, inicio, "🛡️", ctx.getColor(R.color.ev_doomsday)
+            )
+        )
+    }
+
+    /**
+     * Data curta no formato do idioma do sistema, montada pelo próprio Android
+     * (sketch "MMMd"): pt "18 dez." / en "Dec 18" / es "18 dic".
+     */
+    private fun dataCurta(ctx: Context, d: LocalDate): String = try {
+        val loc = ctx.resources.configuration.locales[0]
+        val padrao = DateFormat.getBestDateTimePattern(loc, "MMMd")
+        DateTimeFormatter.ofPattern(padrao, loc).format(d)
+    } catch (e: Exception) {
+        "%02d/%02d".format(d.dayOfMonth, d.monthValue)
+    }
 
     private data class Evento(
         val titulo: String,
         val subtitulo: String,
         val data: LocalDate,
+        val inicio: LocalDate,
         val emoji: String,
         val cor: Int
     )
@@ -57,6 +113,7 @@ class CountdownWallpaperService : WallpaperService() {
         const val BANNER_TR = "banner_tr"   // duração da transição entre banners
         const val BANNER_PAN = "banner_pan" // velocidade do pan lateral (px/s, 0 = parado)
         const val BANNER_SHADE = "banner_shade" // cobertura roxa sobre o banner (30..95%)
+        const val SAVER = "saver"           // modo economizador (mínimo consumo)
         const val C_TOP = "c_top"
         const val C_MID = "c_mid"
         const val C_BOT = "c_bot"
@@ -78,12 +135,29 @@ class CountdownWallpaperService : WallpaperService() {
         // ===== DATAS ALVO - edite aqui se mudar =====
         // Hoje de referência: 15/10/2026
 
-        private val eventos = listOf(
-            Evento("VISION QUEST", "Ep 3 e 4 - Disney+", LocalDate.of(2026, 10, 21), "👁", Color.parseColor("#8B5CF6")),
-            Evento("ZELDA OOT REMAKE", "Switch 2 - 05/11", LocalDate.of(2026, 11, 5), "🗡️", Color.parseColor("#22C55E")),
-            Evento("GTA 6", "PS5 / Xbox - 19/11", LocalDate.of(2026, 11, 19), "🚗", Color.parseColor("#F59E0B")),
-            Evento("VINGADORES DOOMSDAY", "Cinema - 18/12", LocalDate.of(2026, 12, 18), "🛡️", Color.parseColor("#EF4444"))
-        )
+        // Início de todas as contagens: é a base do "quanto falta" que
+        // escurece o card da esquerda pra direita (1 = tudo, 0 = chegou).
+        private val inicioContagem = LocalDate.of(2026, 10, 15)
+
+        // Nome, subtítulo e cor saem dos recursos (strings.xml/colors.xml do
+        // idioma atual). Refaz tudo se o idioma do app mudar — ver
+        // [recarregarIdioma].
+        private var eventos: List<Evento> = montarEventos(appCtx(), inicioContagem)
+        private var textos: Textos = TextosRecursos(appCtx())
+
+        private fun appCtx(): Context = this@CountdownWallpaperService.applicationContext
+
+        /**
+         * Idioma do app mudou: relê eventos e textos e manda reassert tudo.
+         * A ordem importa — `needRebake` é @Volatile e escrito por último, então
+         * a thread GL enxerga os campos novos quando começar o rebake.
+         */
+        fun recarregarIdioma() {
+            val ctx = appCtx()
+            eventos = montarEventos(ctx, inicioContagem)
+            textos = TextosRecursos(ctx)
+            needRebake = true
+        }
 
         // Deslocamento aleatório sorteado uma vez e guardado: a estreia começa
         // num card qualquer, e as próximas voltas continuam sem reiniciar.
@@ -146,15 +220,27 @@ class CountdownWallpaperService : WallpaperService() {
         private val cardRects = Array(4) { RectF() }
         private var cardH = 0f
         private var cardRealH = 0f // altura visual do card (20% menor na vertical)
+        // Tamanho em pixels do bitmap do fundo do card (pra reasser a cada hora).
+        private var cardPxW = 0
+        private var cardPxH = 0
+        // Grade do layout: 1 coluna no retrato, 2 no paisagem/tablet deitado.
+        private var colunas = 1
+        // Respiros internos do card, proporcionais ao tamanho dele (funciona
+        // igual num celular pequeno e num tablet).
+        private var padEsq = 32f
+        private var padDir = 28f
         private var margin = 0f
-        private var topY = 0f
         private val sprHTop = Sprite()
         private val sprHTitle = Sprite()
         private val sprFooter = Sprite()
         private val labels = Array(4) { Sprite() }
         private val subs = Array(4) { Sprite() }
         private val days = Array(4) { Sprite() }
+        private val horas = Array(4) { Sprite() }
+        // Quanto ainda falta de cada card (0..1): largura da sombra escura.
+        private val fracRestante = FloatArray(4) { 1f }
         private var cachedDay: LocalDate? = null
+        private var cachedHora = -1
         // Cores parseadas 1x por snapshot (não por frame).
         private var lastSettings: RenderSettings? = null
         private var cTopInt = Color.parseColor(Prefs.DEF_TOP)
@@ -331,10 +417,11 @@ class CountdownWallpaperService : WallpaperService() {
             halo.recycle()
             // Handles do contexto morto não valem mais: rebake recria.
             for (i in cardTex.indices) cardTex[i] = 0
-            (listOf(sprHTop, sprHTitle, sprFooter) + labels + subs + days)
+            (listOf(sprHTop, sprHTitle, sprFooter) + labels + subs + days + horas)
                 .forEach { it.tex = 0 }
             lastSettings = null
             cachedDay = null
+            cachedHora = -1
             needRebake = true
         }
 
@@ -394,7 +481,7 @@ class CountdownWallpaperService : WallpaperService() {
                 bannerOrder.clear()
                 GlEngine.deleteTex(haloTex)
                 GlEngine.deleteTex(*cardTex)
-                (listOf(sprHTop, sprHTitle, sprFooter) + labels + subs + days)
+                (listOf(sprHTop, sprHTitle, sprFooter) + labels + subs + days + horas)
                     .forEach { GlEngine.deleteTex(it.tex); it.tex = 0 }
                 egl?.release()
             } catch (e: Exception) {
@@ -423,59 +510,140 @@ class CountdownWallpaperService : WallpaperService() {
             layH = lh.toFloat()
             val wf = layW
             val hf = layH
-            // Bloco de cards mais pra cima e mais próximos: começa em 0.20
-            // da altura e ocupa 0.60 no total (antes 0.227 → 0.893).
-            // Card 20% menor na vertical, centralizado no mesmo slot.
-            margin = wf * 0.148f
-            cardH = (hf * 0.60f) / eventos.size
+
+            // ---- layout responsivo ----
+            // Retrato (de celular pequeno a tablet em pé): 1 coluna com os 4
+            // cards empilhados, como sempre.
+            // Paisagem / tablet deitado / dobrável aberto: 2 colunas x 2 linhas —
+            // em 1 coluna os cards viram tiras finas e o texto dos dias não caberia.
+            // Tudo aqui é proporção da tela, então funciona de 480x800 a 2560x1600.
+            val paisagem = wf / hf >= 1.1f
+            colunas = if (paisagem) 2 else 1
+            val linhas = (eventos.size + colunas - 1) / colunas
+            val gapX = if (colunas > 1) wf * 0.03f else 0f
+            margin = wf * (if (paisagem) 0.06f else 0.12f)
+            cardH = (hf * (if (paisagem) 0.58f else 0.60f)) / linhas
             cardRealH = (cardH - 20f) * 0.8f
-            val top = hf * 0.20f
-            topY = top
-            val cw = (wf - margin * 2f).toInt()
+            val top = hf * (if (paisagem) 0.26f else 0.20f)
+            val cw = ((wf - margin * 2f - gapX * (colunas - 1)) / colunas).toInt()
             val ch = cardRealH.toInt()
+            cardPxW = cw
+            cardPxH = ch
+            // Respiros internos proporcionais (32px e 28px num card de 820).
+            padEsq = cw * 0.039f
+            padDir = cw * 0.034f
+            val dy = (cardH - cardRealH) / 2f
             eventos.forEachIndexed { i, ev ->
-                val y0 = top + i * cardH
-                val dy = (cardH - cardRealH) / 2f
-                cardRects[i].set(margin, y0 + dy, wf - margin, y0 + dy + cardRealH)
-                if (cardTex[i] != 0) GlEngine.deleteTex(cardTex[i])
-                val bmp = GlEngine.bakeCardBmp(cw, ch, ev.cor)
-                cardTex[i] = GlEngine.uploadBitmap(bmp)
-                bmp.recycle()
-                replace(
-                    labels[i],
-                    GlEngine.uploadText(
-                        "${ev.emoji}  ${ev.titulo}",
-                        (wf * 0.045f).coerceAtMost(cardRealH * 0.27f), Color.WHITE, true
-                    )
-                )
+                val col = i % colunas
+                val lin = i / colunas
+                val x0 = margin + col * (cw + gapX)
+                val y0 = top + lin * cardH
+                cardRects[i].set(x0, y0 + dy, x0 + cw, y0 + dy + cardRealH)
+                // Título: encolhe sozinho se passar de 64% da largura do card,
+                // pra sempre sobrar espaço pros dias/horas à direita.
+                val titulo = "${ev.emoji}  ${ev.titulo}"
+                val maxTitulo = cw * 0.64f
+                var tSize = (cw * 0.053f).coerceAtMost(cardRealH * 0.25f)
+                var tBaked = GlEngine.uploadText(titulo, tSize, Color.WHITE, true)
+                if (tBaked.w > maxTitulo && maxTitulo > 40f) {
+                    val ajuste = (tSize * maxTitulo / tBaked.w).coerceAtLeast(cw * 0.032f)
+                    GlEngine.deleteTex(tBaked.tex)
+                    tBaked = GlEngine.uploadText(titulo, ajuste, Color.WHITE, true)
+                }
+                replace(labels[i], tBaked)
                 replace(
                     subs[i],
                     GlEngine.uploadText(
                         ev.subtitulo,
-                        (wf * 0.035f).coerceAtMost(cardRealH * 0.21f),
-                        Color.parseColor("#E2E8F0"), false
+                        (cw * 0.043f).coerceAtMost(cardRealH * 0.19f),
+                        appCtx().getColor(R.color.wp_secundario), false
                     )
                 )
             }
-            replace(sprHTop, GlEngine.uploadText("FALTAM", wf * 0.038f, Color.parseColor("#DDD6FE"), false))
-            replace(sprHTitle, GlEngine.uploadText("COUNTDOWN GEEK", wf * 0.075f, Color.WHITE, true))
-            replace(sprFooter, GlEngine.uploadText("Atualiza sozinho todo dia", wf * 0.038f, Color.parseColor("#DDD6FE"), false))
-            rebakeDays()
+            // Cabeçalho/rodapé: proporcionais à tela, mas com teto pela altura
+            // (num tablet deitado o texto não fica gigante).
+            val szCab = minOf(wf * 0.038f, hf * 0.024f)
+            val szTitulo = minOf(wf * 0.075f, hf * 0.050f)
+            val cabecalho = appCtx().getColor(R.color.wp_cabecalho)
+            replace(sprHTop, GlEngine.uploadText(appCtx().getString(R.string.wp_faltam), szCab, cabecalho, false))
+            replace(sprHTitle, GlEngine.uploadText(appCtx().getString(R.string.wp_titulo), szTitulo, Color.WHITE, true))
+            replace(sprFooter, GlEngine.uploadText(appCtx().getString(R.string.wp_rodape), szCab, cabecalho, false))
+            // Contagem + fundo dos cards (o "quanto falta" vai assado neles).
+            rebakeContagem(LocalDateTime.now())
             // (Re)dimensiona o FBO meia-res pra nova superfície.
             try { fbo?.ensure(w, h) } catch (e: Exception) { }
         }
 
-        /** Só os dias (chamado quando o dia vira). Roda na GL thread. */
-        private fun rebakeDays() {
-            val today = LocalDate.now()
-            val wf = layW
+        /**
+         * Reassa a contagem dos 4 cards: dias (grande), hora fina (pequena) e o
+         * fundo com a fração que ainda falta (largura do trecho escuro). Roda na
+         * GL thread; chamado quando o dia/hora vira.
+         */
+        private fun rebakeContagem(agora: LocalDateTime) {
+            val hoje = agora.toLocalDate()
+            val cardW = cardRects[0].width()
             eventos.forEachIndexed { i, ev ->
-                val txt = CountdownLogic.textoDias(CountdownLogic.diasFaltam(today, ev.data))
-                val size = (if (txt.length > 7) wf * 0.06f else wf * 0.08f)
-                    .coerceAtMost(cardRealH * 0.42f)
-                replace(days[i], GlEngine.uploadText(txt, size, Color.WHITE, true))
+                val alvo = ev.data.atStartOfDay()
+                val txt = CountdownLogic.textoDias(CountdownLogic.diasFaltam(hoje, ev.data), textos)
+
+                // Tamanho base menor que antes (não encosta no título) e, se
+                // ainda sobrar pouco espaço ao lado do nome, encolhe sozinho.
+                var size = (if (txt.length > 7) cardPxW * 0.059f else cardPxW * 0.074f)
+                    .coerceAtMost(cardRealH * 0.30f)
+                var baked = GlEngine.uploadText(txt, size, Color.WHITE, true)
+                // largura livre = card - respiro esq - título - respiro - respiro dir
+                val livre = cardW - padEsq - labels[i].w - cardPxW * 0.032f - padDir
+                if (baked.w > livre) {
+                    if (livre < 40f) {
+                        // título gigante: melhor não desenhar os dias do que sobrepor
+                        GlEngine.deleteTex(baked.tex)
+                        if (days[i].tex != 0) {
+                            GlEngine.deleteTex(days[i].tex)
+                            days[i].tex = 0
+                        }
+                    } else {
+                        val ajustado = (size * livre / baked.w).coerceAtLeast(cardPxW * 0.032f)
+                        GlEngine.deleteTex(baked.tex)
+                        baked = GlEngine.uploadText(txt, ajustado, Color.WHITE, true)
+                        replace(days[i], baked)
+                    }
+                } else {
+                    replace(days[i], baked)
+                }
+
+                val fino = CountdownLogic.textoHoras(agora, alvo, textos)
+                if (fino.isEmpty()) {
+                    if (horas[i].tex != 0) {
+                        GlEngine.deleteTex(horas[i].tex)
+                        horas[i].tex = 0
+                    }
+                } else {
+                    replace(
+                        horas[i],
+                        GlEngine.uploadText(
+                            fino,
+                            (cardPxW * 0.041f).coerceAtMost(cardRealH * 0.18f),
+                            appCtx().getColor(R.color.wp_horas), false
+                        )
+                    )
+                }
+                fracRestante[i] = CountdownLogic.fracaoRestante(agora, ev.inicio.atStartOfDay(), alvo)
+                // O fundo é reassado junto: o escuro começa exatamente onde a
+                // contagem parou, já recortado nas quinas do card.
+                rebakeCard(i)
             }
-            cachedDay = today
+            cachedDay = hoje
+            cachedHora = agora.hour
+        }
+
+        /** (Re)assa o fundo do card: barrinha + escuro do "quanto falta" + traço. */
+        private fun rebakeCard(i: Int) {
+            if (cardPxW < 2 || cardPxH < 2) return
+            if (cardTex[i] != 0) GlEngine.deleteTex(cardTex[i])
+            val ev = eventos[i]
+            val bmp = GlEngine.bakeCardBmp(cardPxW, cardPxH, ev.cor, fracRestante[i], ev.cor)
+            cardTex[i] = GlEngine.uploadBitmap(bmp)
+            bmp.recycle()
         }
 
         /** Carrega os banners de assets/banners (1x por contexto GL). Roda na GL thread. */
@@ -532,7 +700,10 @@ class CountdownWallpaperService : WallpaperService() {
             }
         }
 
-        private fun centerY(top: Float, idx: Int) = top + idx * cardH + cardH / 2f
+        private fun centroY(idx: Int): Float {
+            val r = cardRects[idx]
+            return if (r.height() > 0f) r.centerY() else 0f
+        }
 
         private fun drawGL() {
             val q = quads ?: return
@@ -572,11 +743,13 @@ class CountdownWallpaperService : WallpaperService() {
             lastFrameMs = nowUptime
             animMs += dtAnim.toDouble()
             if (animMs >= 3_600_000.0) animMs -= 3_600_000.0
-            val t = (animMs / 1000.0).toFloat() * s.speed
+            // Economizador: fundo congelado. Um glow pulando a 0,5 fps ficaria
+            // feio e ainda acordaria a GPU à toa — parado, o custo é ~zero.
+            val t = if (s.saver) 0f else (animMs / 1000.0).toFloat() * s.speed
             val stars = s.particles.coerceIn(0, 80).toFloat()
 
-            val today = LocalDate.now()
-            if (today != cachedDay) rebakeDays()
+            val agora = LocalDateTime.now()
+            if (agora.toLocalDate() != cachedDay || agora.hour != cachedHora) rebakeContagem(agora)
 
             // ---- banners: crossfade em ordem aleatória + pan leve ----
             var bTex = 0
@@ -679,8 +852,6 @@ class CountdownWallpaperService : WallpaperService() {
                 GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
             }
 
-            val top = topY
-
             // Título topo (centralizado na janela visível)
             q.drawWhite(sprHTop.tex, cxScreen - sprHTop.w / 2f, layH * 0.10f - sprHTop.base, sprHTop.w, sprHTop.h, w, h)
             q.drawWhite(sprHTitle.tex, cxScreen - sprHTitle.w / 2f, layH * 0.145f - sprHTitle.base, sprHTitle.w, sprHTitle.h, w, h)
@@ -704,17 +875,20 @@ class CountdownWallpaperService : WallpaperService() {
             } else 1f
             val easeTravel = travelFrac * travelFrac * (3f - 2f * travelFrac)
             if (hoverOn) {
-                val glowY = centerY(top, cur) + (centerY(top, nxt) - centerY(top, cur)) * easeTravel
+                val glowY = centroY(cur) + (centroY(nxt) - centroY(cur)) * easeTravel
                 val pulse = 0.6f + 0.4f * sin(t * 2.0f)
-                val hw = (layW - margin * 2f) / 2f + 18f
-                val hh = cardRealH / 2f + 6f
+                val baseAtual = cardRects[cur]
+                val hw = baseAtual.width() / 2f + cardPxW * 0.022f
+                val hh = baseAtual.height() / 2f + cardPxW * 0.0075f
                 q.draw(
                     haloTex, cxScreen - hw, shiftY + glowY - hh, hw * 2f, hh * 2f, w, h,
                     196f / 255f, 132f / 255f, 252f / 255f, (70 + 40 * pulse) / 255f
                 )
             }
 
-            // Cards + textos (layout original: emoji+título à esquerda, dias à direita)
+            // Cards + textos (emoji+título à esquerda; dias + horas à direita).
+            // O fundo de cada card já vem com a barrinha colorida e o escuro
+            // do "quanto falta" (com o traço marcador) desenhados dentro dele.
             eventos.forEachIndexed { i, _ ->
                 val base = cardRects[i]
                 val glowHere = when (i) {
@@ -732,11 +906,23 @@ class CountdownWallpaperService : WallpaperService() {
                 q.drawWhite(cardTex[i], rl, rt, rw, rh, w, h)
 
                 val lb = labels[i]
-                q.drawWhite(lb.tex, rl + 32f, rt + rh * 0.30f - lb.base, lb.w, lb.h, w, h)
+                q.drawWhite(lb.tex, rl + padEsq, rt + rh * 0.30f - lb.base, lb.w, lb.h, w, h)
                 val sb = subs[i]
-                q.drawWhite(sb.tex, rl + 32f, rt + rh * 0.58f - sb.base, sb.w, sb.h, w, h)
-                val db = days[i]
-                q.drawWhite(db.tex, rl + rw - 28f - db.w, rt + rh * 0.62f - db.base, db.w, db.h, w, h)
+                q.drawWhite(sb.tex, rl + padEsq, rt + rh * 0.58f - sb.base, sb.w, sb.h, w, h)
+                val daysSpr = days[i]
+                if (daysSpr.tex != 0) {
+                    q.drawWhite(
+                        daysSpr.tex, rl + rw - padDir - daysSpr.w, rt + rh * 0.46f - daysSpr.base,
+                        daysSpr.w, daysSpr.h, w, h
+                    )
+                }
+                val hb = horas[i]
+                if (hb.tex != 0) {
+                    q.drawWhite(
+                        hb.tex, rl + rw - padDir - hb.w, rt + rh * 0.72f - hb.base,
+                        hb.w, hb.h, w, h
+                    )
+                }
             }
 
             // rodapé

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deitado (paisagem): a tela é baixa, então a prévia encolhe pra sobrar
+  espaço pras seções, e a margem lateral diminui.
+  Obs.: o Android dá prioridade ao smallestWidth (sw600dp) sobre a orientação,
+  então em tablet deitado quem manda é o arquivo do tablet.
+-->
+<resources>
+    <dimen name="espaco_tela">16dp</dimen>
+    <dimen name="previa_altura">140dp</dimen>
+</resources>

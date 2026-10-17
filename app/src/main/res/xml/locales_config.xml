@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Idiomas do app. Faz o Android 13+ (e o One UI 5+) mostrar
+  Ajustes > Apps > Countdown Geek > Idioma, com troca por app.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="pt" />
+    <locale android:name="es" />
+</locale-config>

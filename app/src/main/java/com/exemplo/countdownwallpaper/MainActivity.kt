@@ -1,22 +1,36 @@
 package com.exemplo.countdownwallpaper
 
 import android.app.Activity
+import android.app.LocaleManager
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.os.LocaleList
+import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.exemplo.countdownwallpaper.CountdownWallpaperService.Prefs
+import java.util.Locale
 
+/**
+ * Tela de ajustes. Todo texto/medida/cor vem de recursos Android
+ * (strings.xml, dimens.xml, colors.xml) — inclusive nos 3 idiomas — pra
+ * funcionar com o idioma do app escolhido no sistema.
+ */
 class MainActivity : Activity() {
 
     private fun prefs() = getSharedPreferences(Prefs.FILE, MODE_PRIVATE)
@@ -26,53 +40,99 @@ class MainActivity : Activity() {
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 48, 48, 48)
-            setBackgroundColor(Color.parseColor("#0B1020"))
+            val p = resources.getDimensionPixelSize(R.dimen.espaco_tela)
+            setPadding(p, p, p, p)
+            setBackgroundColor(getColor(R.color.tema_fundo))
         }
+
+        fun TextView.tamanho(id: Int) =
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(id))
 
         fun titulo(txt: String) = TextView(this).apply {
-            text = txt; textSize = 26f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+            text = txt; tamanho(R.dimen.txt_titulo); setTextColor(getColor(R.color.texto))
+            gravity = Gravity.CENTER
         }
         fun subtitulo(txt: String) = TextView(this).apply {
-            text = txt; textSize = 14f; setTextColor(Color.parseColor("#CBD5E1"))
-            gravity = Gravity.CENTER; setPadding(0, 16, 0, 24)
+            text = txt; tamanho(R.dimen.txt_subtitulo); setTextColor(getColor(R.color.texto_secundario))
+            gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(10))
         }
         fun secao(txt: String) = TextView(this).apply {
-            text = txt; textSize = 16f; setTextColor(Color.parseColor("#A78BFA"))
-            setPadding(0, 32, 0, 8)
+            text = txt; tamanho(R.dimen.txt_secao); setTextColor(getColor(R.color.destaque))
+            setPadding(0, dp(14), 0, dp(4))
         }
         fun rotulo(txt: String) = TextView(this).apply {
-            text = txt; textSize = 13f; setTextColor(Color.WHITE); setPadding(0, 12, 0, 0)
+            text = txt; tamanho(R.dimen.txt_rotulo); setTextColor(getColor(R.color.texto))
+            setPadding(0, dp(6), 0, 0)
+        }
+        fun ajuda(txt: String) = TextView(this).apply {
+            text = txt; tamanho(R.dimen.txt_ajuda); setTextColor(getColor(R.color.texto_terciario))
+            setPadding(0, dp(2), 0, 0)
+        }
+        fun caixa(txtRes: Int, valor: Boolean, aoMudar: (Boolean) -> Unit) = CheckBox(this).apply {
+            text = getString(txtRes); setTextColor(getColor(R.color.texto))
+            isChecked = valor
+            setOnCheckedChangeListener { _, v -> aoMudar(v) }
         }
 
-        layout.addView(titulo("Countdown Geek"))
-        layout.addView(subtitulo("Vision Quest • Zelda OOT • GTA 6 • Vingadores Doomsday"))
+        layout.addView(titulo(getString(R.string.app_name)))
+        layout.addView(subtitulo(getString(R.string.cfg_sub)))
 
-        layout.addView(rotulo("Pré-visualização ao vivo:"))
+        layout.addView(rotulo(getString(R.string.cfg_previa)))
+        // Largura limitada (e centralizada): num tablet a prévia não estica
+        // pela tela toda — ela imita a proporção de um celular.
+        val margem = resources.getDimensionPixelSize(R.dimen.espaco_tela)
+        val larguraPrev = minOf(
+            resources.displayMetrics.widthPixels - margem * 2,
+            resources.getDimensionPixelSize(R.dimen.previa_largura_max)
+        )
         layout.addView(BannerPreviewView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                (220 * resources.displayMetrics.density).toInt()
-            ).apply { setMargins(0, 8, 0, 8) }
+                larguraPrev,
+                resources.getDimensionPixelSize(R.dimen.previa_altura)
+            ).apply {
+                setMargins(0, dp(4), 0, dp(4))
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
         })
 
         layout.addView(Button(this).apply {
-            text = "Definir como papel de parede"
+            text = getString(R.string.cfg_definir)
             setOnClickListener { abrirSeletorWallpaper() }
         })
         layout.addView(TextView(this).apply {
-            text = "Ou segure na tela inicial > Papel de parede > Papéis de parede animados > Countdown Geek"
-            textSize = 12f; setTextColor(Color.parseColor("#94A3B8"))
-            gravity = Gravity.CENTER; setPadding(0, 16, 0, 0)
+            text = getString(R.string.cfg_dica)
+            tamanho(R.dimen.txt_ajuda); setTextColor(getColor(R.color.texto_terciario))
+            gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0)
         })
 
+        // ---------- IDIOMA ----------
+        layout.addView(secao(getString(R.string.sec_idioma)))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            layout.addView(seletorIdioma())
+        } else {
+            layout.addView(ajuda(getString(R.string.cfg_idioma_antigo)))
+        }
+
+        // ---------- ECONOMIA ----------
+        layout.addView(secao(getString(R.string.sec_economia)))
+
+        layout.addView(caixa(R.string.cfg_saver, prefs().getBoolean(Prefs.SAVER, false)) { v ->
+            prefs().edit().putBoolean(Prefs.SAVER, v).apply()
+            Toast.makeText(
+                this@MainActivity,
+                getString(if (v) R.string.cfg_saver_on else R.string.cfg_saver_off),
+                Toast.LENGTH_SHORT
+            ).show()
+        })
+        layout.addView(ajuda(getString(R.string.cfg_saver_desc)))
+
         // ---------- ANIMAÇÃO ----------
-        layout.addView(secao("Animação"))
+        layout.addView(secao(getString(R.string.sec_animacao)))
 
         val p = prefs()
         val lblVel = rotulo("")
         val skVel = SeekBar(this).apply { max = 175 } // 25..200%
-        fun mostraVel(v: Int) { lblVel.text = "Velocidade: ${v + 25}%" }
+        fun mostraVel(v: Int) { lblVel.text = getString(R.string.cfg_velocidade, v + 25) }
         skVel.progress = (p.getFloat(Prefs.SPEED, 1f) * 100).toInt() - 25
         mostraVel(skVel.progress)
         skVel.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -88,9 +148,9 @@ class MainActivity : Activity() {
         val lblFps = rotulo("")
         // Engine V2: vsync + throttle (equilíbrio 30fps). 16 = performance 60fps.
         val frames = longArrayOf(16L, 33L, 50L, 66L)
-        val nomes = arrayOf("Performance ~60fps", "Equilíbrio ~30fps (recomendado)", "Eco ~20fps", "Super eco ~15fps")
+        val nomes = resources.getStringArray(R.array.fps_nomes)
         val skFps = SeekBar(this).apply { max = 3 }
-        fun mostraFps(i: Int) { lblFps.text = "Fluidez: ${nomes[i]}" }
+        fun mostraFps(i: Int) { lblFps.text = getString(R.string.cfg_fluidez, nomes[i]) }
         val salvo = try { p.getLong(Prefs.FRAME_TARGET_MS, p.getInt(Prefs.FRAME_MS, 33).toLong()) } catch (e: Exception) { 33L }
         val idxSalvo = frames.indexOfFirst { it == salvo }
         val fiPadrao = if (idxSalvo >= 0) idxSalvo else 1
@@ -107,7 +167,7 @@ class MainActivity : Activity() {
 
         val lblPart = rotulo("")
         val skPart = SeekBar(this).apply { max = 80 }
-        fun mostraPart(v: Int) { lblPart.text = "Partículas: $v" }
+        fun mostraPart(v: Int) { lblPart.text = getString(R.string.cfg_particulas, v) }
         skPart.progress = p.getInt(Prefs.PARTICLES, 30); mostraPart(skPart.progress)
         skPart.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
@@ -120,18 +180,16 @@ class MainActivity : Activity() {
         layout.addView(lblPart); layout.addView(skPart)
 
         // ---------- SELEÇÃO (HOVER) ----------
-        layout.addView(secao("Seleção dos cards"))
+        layout.addView(secao(getString(R.string.sec_selecao)))
 
-        layout.addView(CheckBox(this).apply {
-            text = "Destacar um card por vez"; setTextColor(Color.WHITE)
-            isChecked = p.getBoolean(Prefs.HOVER, true)
-            setOnCheckedChangeListener { _, v -> p.edit().putBoolean(Prefs.HOVER, v).apply() }
+        layout.addView(caixa(R.string.cfg_hover, p.getBoolean(Prefs.HOVER, true)) { v ->
+            p.edit().putBoolean(Prefs.HOVER, v).apply()
         })
 
         val lblHover = rotulo("")
         val skHover = SeekBar(this).apply { max = 12 } // 3..15s parado
-        fun mostraHover(v: Int) { lblHover.text = "Tempo parado por card: ${v + 3}s" }
-        skHover.progress = (p.getLong(Prefs.HOVER_MS, 3000L) / 1000).toInt() - 3
+        fun mostraHover(v: Int) { lblHover.text = getString(R.string.cfg_hover_ms, v + 3) }
+        skHover.progress = (p.getLong(Prefs.HOVER_MS, 9000L) / 1000).toInt().coerceIn(0, 12) - 3
         mostraHover(skHover.progress)
         skHover.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
@@ -145,7 +203,7 @@ class MainActivity : Activity() {
 
         val lblTr = rotulo("")
         val skTr = SeekBar(this).apply { max = 20 } // 0..2000ms de transição
-        fun mostraTr(v: Int) { lblTr.text = "Transição entre cards: ${v * 100}ms" }
+        fun mostraTr(v: Int) { lblTr.text = getString(R.string.cfg_hover_tr, v * 100) }
         skTr.progress = (p.getLong(Prefs.HOVER_TR, 600L) / 100).toInt().coerceIn(0, 20)
         mostraTr(skTr.progress)
         skTr.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -158,23 +216,19 @@ class MainActivity : Activity() {
         })
         layout.addView(lblTr); layout.addView(skTr)
 
-        layout.addView(CheckBox(this).apply {
-            text = "Card cresce ao selecionar (zoom)"; setTextColor(Color.WHITE)
-            isChecked = p.getBoolean(Prefs.ZOOM, true)
-            setOnCheckedChangeListener { _, v -> p.edit().putBoolean(Prefs.ZOOM, v).apply() }
+        layout.addView(caixa(R.string.cfg_zoom, p.getBoolean(Prefs.ZOOM, true)) { v ->
+            p.edit().putBoolean(Prefs.ZOOM, v).apply()
         })
 
-        layout.addView(secao("Banners no fundo"))
+        layout.addView(secao(getString(R.string.sec_banners)))
 
-        layout.addView(CheckBox(this).apply {
-            text = "Banners geek no fundo (roxo por cima)"; setTextColor(Color.WHITE)
-            isChecked = p.getBoolean(Prefs.BANNERS, true)
-            setOnCheckedChangeListener { _, v -> p.edit().putBoolean(Prefs.BANNERS, v).apply() }
+        layout.addView(caixa(R.string.cfg_banners, p.getBoolean(Prefs.BANNERS, true)) { v ->
+            p.edit().putBoolean(Prefs.BANNERS, v).apply()
         })
 
         val lblBms = rotulo("")
         val skBms = SeekBar(this).apply { max = 22 } // 8..30s parado
-        fun mostraBms(v: Int) { lblBms.text = "Tempo parado por banner: ${v + 8}s" }
+        fun mostraBms(v: Int) { lblBms.text = getString(R.string.cfg_banner_ms, v + 8) }
         skBms.progress = (p.getLong(Prefs.BANNER_MS, 18000L) / 1000).toInt().coerceIn(8, 30) - 8
         mostraBms(skBms.progress)
         skBms.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -189,7 +243,7 @@ class MainActivity : Activity() {
 
         val lblBtr = rotulo("")
         val skBtr = SeekBar(this).apply { max = 5 } // 0.5..3.0s de transição
-        fun mostraBtr(v: Int) { lblBtr.text = "Transição entre banners: ${(v + 1) * 500}ms" }
+        fun mostraBtr(v: Int) { lblBtr.text = getString(R.string.cfg_banner_tr, (v + 1) * 500) }
         skBtr.progress = (p.getLong(Prefs.BANNER_TR, 1500L) / 500).toInt().coerceIn(1, 6) - 1
         mostraBtr(skBtr.progress)
         skBtr.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -204,7 +258,10 @@ class MainActivity : Activity() {
 
         val lblPan = rotulo("")
         val skPan = SeekBar(this).apply { max = 60 } // 0..60 px/s (0 = parado)
-        fun mostraPan(v: Int) { lblPan.text = if (v == 0) "Pan lateral: parado" else "Pan lateral: $v px/s" }
+        fun mostraPan(v: Int) {
+            lblPan.text = if (v == 0) getString(R.string.cfg_pan_parado)
+            else getString(R.string.cfg_pan, v)
+        }
         skPan.progress = p.getInt(Prefs.BANNER_PAN, 10).coerceIn(0, 60)
         mostraPan(skPan.progress)
         skPan.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -219,7 +276,7 @@ class MainActivity : Activity() {
 
         val lblShade = rotulo("")
         val skShade = SeekBar(this).apply { max = 65 } // 30..95% de cobertura roxa
-        fun mostraShade(v: Int) { lblShade.text = "Cobertura roxa: ${v + 30}%" }
+        fun mostraShade(v: Int) { lblShade.text = getString(R.string.cfg_shade, v + 30) }
         skShade.progress = p.getInt(Prefs.BANNER_SHADE, 68).coerceIn(30, 95) - 30
         mostraShade(skShade.progress)
         skShade.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -233,7 +290,7 @@ class MainActivity : Activity() {
         layout.addView(lblShade); layout.addView(skShade)
 
         // ---------- CORES ----------
-        layout.addView(secao("Cores do fundo (topo / meio / base)"))
+        layout.addView(secao(getString(R.string.sec_cores)))
 
         var etTop: EditText? = null
         var etMid: EditText? = null
@@ -244,26 +301,30 @@ class MainActivity : Activity() {
             setOnClickListener {
                 p.edit().putString(Prefs.C_TOP, top).putString(Prefs.C_MID, mid).putString(Prefs.C_BOT, bot).apply()
                 etTop?.setText(top); etMid?.setText(mid); etBot?.setText(bot)
-                Toast.makeText(this@MainActivity, "Tema $nome aplicado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.cfg_tema_aplicado, nome),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
-        val linhas = listOf(
-            listOf(
-                arrayOf("Roxo", "#150826", "#6D28D9", "#2E1065"),
-                arrayOf("Oceano", "#020617", "#0369A1", "#082F49"),
-                arrayOf("Fogo", "#1C0A00", "#C2410C", "#431407")
-            ),
-            listOf(
-                arrayOf("Verde", "#02120A", "#16A34A", "#052E16"),
-                arrayOf("Sunset", "#20063B", "#EC4899", "#F59E0B"),
-                arrayOf("Meia-noite", "#000000", "#1D4ED8", "#020617")
-            )
+        // Nomes vindos de temas_nomes (traduzidos); os hex são os mesmos em
+        // qualquer idioma, então ficam aqui.
+        val nomesTemas = resources.getStringArray(R.array.temas_nomes)
+        val hexTemas = listOf(
+            arrayOf("#150826", "#6D28D9", "#2E1065"),
+            arrayOf("#020617", "#0369A1", "#082F49"),
+            arrayOf("#1C0A00", "#C2410C", "#431407"),
+            arrayOf("#02120A", "#16A34A", "#052E16"),
+            arrayOf("#20063B", "#EC4899", "#F59E0B"),
+            arrayOf("#000000", "#1D4ED8", "#020617")
         )
-        linhas.forEach { linha ->
+        for (linha in 0 until 2) {
             val rowLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            linha.forEach { t ->
-                rowLayout.addView(preset(t[0], t[1], t[2], t[3]).apply {
+            for (col in 0 until 3) {
+                val t = linha * 3 + col
+                rowLayout.addView(preset(nomesTemas[t], hexTemas[t][0], hexTemas[t][1], hexTemas[t][2]).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
                     )
@@ -273,16 +334,16 @@ class MainActivity : Activity() {
         }
 
         fun etCor(valor: String) = EditText(this).apply {
-            setText(valor); setTextColor(Color.WHITE); textSize = 13f
+            setText(valor); setTextColor(getColor(R.color.texto)); tamanho(R.dimen.txt_campo_cor)
         }
         val etTopV = etCor(p.getString(Prefs.C_TOP, Prefs.DEF_TOP)!!)
         val etMidV = etCor(p.getString(Prefs.C_MID, Prefs.DEF_MID)!!)
         val etBotV = etCor(p.getString(Prefs.C_BOT, Prefs.DEF_BOT)!!)
         etTop = etTopV; etMid = etMidV; etBot = etBotV
-        layout.addView(rotulo("Cor personalizada (hex, ex: #6D28D9):"))
+        layout.addView(rotulo(getString(R.string.cfg_hex)))
         layout.addView(etTopV); layout.addView(etMidV); layout.addView(etBotV)
         layout.addView(Button(this).apply {
-            text = "Aplicar cores"
+            text = getString(R.string.cfg_aplicar)
             setOnClickListener {
                 try {
                     Color.parseColor(etTopV.text.toString())
@@ -291,15 +352,15 @@ class MainActivity : Activity() {
                     p.edit().putString(Prefs.C_TOP, etTopV.text.toString())
                         .putString(Prefs.C_MID, etMidV.text.toString())
                         .putString(Prefs.C_BOT, etBotV.text.toString()).apply()
-                    Toast.makeText(this@MainActivity, "Cores aplicadas", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.cfg_cores_aplicadas), Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    Toast.makeText(this@MainActivity, "Hex inválido! Ex: #6D28D9", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.cfg_hex_invalido), Toast.LENGTH_SHORT).show()
                 }
             }
         })
 
         layout.addView(Button(this).apply {
-            text = "Restaurar padrão"
+            text = getString(R.string.cfg_restaurar)
             setOnClickListener {
                 p.edit().clear().apply()
                 recreate()
@@ -311,11 +372,11 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION")
             val code = pkg.versionCode
             layout.addView(TextView(this).apply {
-                text = "Versão ${pkg.versionName} (${code})"
-                textSize = 12f
-                setTextColor(Color.parseColor("#64748B"))
+                text = getString(R.string.cfg_versao, pkg.versionName, code)
+                tamanho(R.dimen.txt_versao)
+                setTextColor(getColor(R.color.texto_quaternario))
                 gravity = Gravity.CENTER
-                setPadding(0, 32, 0, 0)
+                setPadding(0, dp(16), 0, 0)
             })
         } catch (e: Exception) {
         }
@@ -323,6 +384,46 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply { addView(layout) }
         setContentView(scroll)
     }
+
+    /**
+     * Troca de idioma por app (Android 13+ / One UI 5+). Usa a API do sistema
+     * com o @xml/locales_config do manifesto — sem biblioteca extra. O sistema
+     * avisa o wallpaper, que reassa os textos no idioma novo.
+     */
+    private fun seletorIdioma(): View {
+        val lm = getSystemService(LocaleManager::class.java)
+        val idiomas: List<Locale?> = listOf(null, Locale("en"), Locale("pt"), Locale("es"))
+        val nomes = idiomas.map { loc ->
+            if (loc == null) getString(R.string.cfg_idioma_sistema)
+            else loc.getDisplayLanguage(loc).replaceFirstChar { c -> c.titlecase(loc) }
+        }
+        val atual = lm?.applicationLocales?.get(0)
+        val idx = idiomas.indexOfFirst { it != null && atual != null && it.language == atual.language }
+
+        return Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                nomes
+            )
+            setSelection(if (idx >= 0) idx else 0)
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                    val escolhido = idiomas[position]
+                    val atualAgora = lm?.applicationLocales?.get(0)
+                    if (atualAgora?.language == escolhido?.language) return
+                    lm?.setApplicationLocales(
+                        if (escolhido == null) LocaleList.getEmptyLocaleList()
+                        else LocaleList.forLanguageTags(escolhido.toLanguageTag())
+                    )
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+        }
+    }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun abrirSeletorWallpaper() {
         try {

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -324,19 +325,54 @@ object GlEngine {
         return Baked(tex, w, h, pad - fm.ascent + 4f)
     }
 
-    /** Fundo do card: roundRect escuro + barrinha de destaque (igual ao original). */
-    fun bakeCardBmp(wPx: Int, hPx: Int, barColor: Int): Bitmap {
+    /**
+     * Fundo do card: roundRect escuro + barrinha de destaque + o "quanto falta".
+     * Tudo desenhado JÁ RECORTADO pelo formato do card, então as quinas batem:
+     * - a barrinha colorida vai de ponta a ponta (nunca é escurecida);
+     * - a parte que falta escurece da esquerda pra direita, começando depois
+     *   da barrinha;
+     * - o traço marcador (cor do evento) atravessa a altura toda do card.
+     */
+    fun bakeCardBmp(
+        wPx: Int,
+        hPx: Int,
+        barColor: Int,
+        falta: Float = 0f,
+        markerColor: Int = barColor
+    ): Bitmap {
         val bmp = Bitmap.createBitmap(wPx.coerceAtLeast(2), hPx.coerceAtLeast(2), Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val w = bmp.width.toFloat()
         val h = bmp.height.toFloat()
+        // Proporcionais ao card: num card de 820px dá exatamente os 32px de
+        // quina e 14px de barrinha de sempre; num tablet/celular pequeno
+        // acompanha o tamanho em vez de ficar fino ou gigante.
+        val raio = (w * 0.039f).coerceIn(6f, 48f)
+        val barW = (w * 0.017f).coerceIn(3f, 32f)
+        val meiaMarca = (w * 0.0018f).coerceIn(1f, 4f)
+        val shape = Path().apply { addRoundRect(0f, 0f, w, h, raio, raio, Path.Direction.CW) }
+
         val card = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 30, 16, 60) }
-        c.drawRoundRect(0f, 0f, w, h, 32f, 32f, card)
+        c.drawRoundRect(0f, 0f, w, h, raio, raio, card)
+
+        c.save()
+        c.clipPath(shape)
+        val restante = falta.coerceIn(0f, 1f)
+        if (restante > 0.001f) {
+            val fim = barW + (w - barW) * restante
+            val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(140, 0, 0, 0) }
+            c.drawRect(barW, 0f, fim, h, dim)
+            if (restante > 0.02f && restante < 0.99f) {
+                val mark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = markerColor }
+                c.drawRect(fim - meiaMarca, 0f, fim + meiaMarca, h, mark)
+            }
+        }
+        // Barrinha por último: acompanha a curva do card e vai de cima a baixo.
         val bar = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = barColor }
-        c.drawRoundRect(0f, 0f, 14f, h, 14f, 14f, bar)
+        c.drawRect(0f, 0f, barW, h, bar)
+        c.restore()
         return bmp
     }
-
     /** Selo radial branco (o halo tinge via tint). */
     fun radialBmp(size: Int): Bitmap {
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
