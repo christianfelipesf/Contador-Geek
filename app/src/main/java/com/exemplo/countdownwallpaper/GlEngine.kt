@@ -168,6 +168,11 @@ object GlEngine {
         private var uGlowA = -1
         private var uGlowB = -1
         private var uStars = -1
+        private var uBanner = -1
+        private var uBannerOn = -1
+        private var uBannerUv = -1
+        private var uGradCover = -1
+        private var uBannerDim = -1
         private var aPos = -1
 
         fun init(): Boolean {
@@ -182,6 +187,11 @@ object GlEngine {
             uGlowA = GLES20.glGetUniformLocation(prog, "uGlowA")
             uGlowB = GLES20.glGetUniformLocation(prog, "uGlowB")
             uStars = GLES20.glGetUniformLocation(prog, "uStars")
+            uBanner = GLES20.glGetUniformLocation(prog, "uBanner")
+            uBannerOn = GLES20.glGetUniformLocation(prog, "uBannerOn")
+            uBannerUv = GLES20.glGetUniformLocation(prog, "uBannerUv")
+            uGradCover = GLES20.glGetUniformLocation(prog, "uGradCover")
+            uBannerDim = GLES20.glGetUniformLocation(prog, "uBannerDim")
             val data = floatArrayOf(-1f, -1f, 3f, -1f, -1f, 3f)
             val buf = ByteBuffer.allocateDirect(data.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
             buf.put(data).position(0)
@@ -194,7 +204,9 @@ object GlEngine {
             return true
         }
 
-        fun draw(w: Float, h: Float, t: Float, top: Int, mid: Int, bot: Int, stars: Float) {
+        fun draw(w: Float, h: Float, t: Float, top: Int, mid: Int, bot: Int, stars: Float,
+                 bannerTex: Int = 0, bannerUv: FloatArray? = null,
+                 gradCover: Float = 0.7f, bannerDim: Float = 0.6f) {
             if (prog == 0) return
             GLES20.glUseProgram(prog)
             GLES20.glUniform2f(uRes, w, h)
@@ -205,6 +217,18 @@ object GlEngine {
             GLES20.glUniform3f(uGlowA, 192f / 255f, 132f / 255f, 252f / 255f)
             GLES20.glUniform3f(uGlowB, 240f / 255f, 120f / 255f, 200f / 255f)
             GLES20.glUniform1f(uStars, stars)
+            if (bannerTex != 0 && bannerUv != null) {
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, bannerTex)
+                GLES20.glUniform1i(uBanner, 1)
+                GLES20.glUniform1f(uBannerOn, 1f)
+                GLES20.glUniform4f(uBannerUv, bannerUv[0], bannerUv[1], bannerUv[2], bannerUv[3])
+                GLES20.glUniform1f(uGradCover, gradCover)
+                GLES20.glUniform1f(uBannerDim, bannerDim)
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+            } else {
+                GLES20.glUniform1f(uBannerOn, 0f)
+            }
             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vbo)
             GLES20.glEnableVertexAttribArray(aPos)
             GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, 0)
@@ -334,7 +358,11 @@ object GlEngine {
     """
 
     private const val FS_BG = """
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+        #else
         precision mediump float;
+        #endif
         uniform vec2 uRes;
         uniform float uTime;
         uniform vec3 uTop;
@@ -343,6 +371,11 @@ object GlEngine {
         uniform vec3 uGlowA;
         uniform vec3 uGlowB;
         uniform float uStars;
+        uniform sampler2D uBanner;
+        uniform float uBannerOn;
+        uniform vec4 uBannerUv;
+        uniform float uGradCover;
+        uniform float uBannerDim;
 
         float hash21(vec2 p) {
           vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -355,37 +388,65 @@ object GlEngine {
           float y = 1.0 - uv.y;
           float aspect = uRes.x / uRes.y;
 
-          float mid = 0.45 + 0.12 * sin(uTime * 0.6);
+          // O tempo já chega curto (< 1h) e acumulado. Cada oscilador é
+          // enrolado no PRÓPRIO período: o argumento de sin/cos fica pequeno
+          // e contínuo, então não perde precisão em mediump (GPU fraca, que
+          // é o que gerava os "micro glitches piscando" depois de um tempo).
+          float t = uTime;
+          float phSlow  = mod(t, 10.47197551) * 0.6;   // = t*0.6
+          float phMid   = mod(t, 12.56637061) * 0.5;   // = t*0.5
+          float phSlow2 = mod(t, 11.42408891) * 0.55;  // = t*0.55
+          float phPulse = mod(t, 3.14159265) * 2.0;    // = t*2.0
+          float phTw    = mod(t, 2.09439510) * 3.0;    // = t*3.0
+          float phBand  = mod(mod(t, 13.33333333) * 0.12, 1.6);
+          // 80 * 0.8 = 64 exatos: o scroll das estrelas dá a volta sem emenda.
+          float starScroll = mod(uTime, 80.0) * 0.8;
+
+          // Banner no fundo com o roxo por cima: a base é o banner
+          // escurecido; o gradiente cobre por cima (uGradCover).
+          vec3 bc = vec3(0.0);
+          if (uBannerOn > 0.5) {
+            vec2 buv = vec2(uBannerUv.x + uv.x * uBannerUv.z,
+                            1.0 - (uBannerUv.y + uv.y * uBannerUv.w));
+            bc = texture2D(uBanner, buv).rgb * uBannerDim;
+          }
+
+          float mid = 0.45 + 0.12 * sin(phSlow);
           vec3 col = mix(uTop, uMid, smoothstep(0.0, mid, y));
           col = mix(col, uBot, smoothstep(mid, 1.0, y));
 
-          float pulse = 0.75 + 0.25 * sin(uTime * 2.0);
+          float pulse = 0.75 + 0.25 * sin(phPulse);
 
-          vec2 c1 = vec2(0.5 + 0.38 * sin(uTime * 0.6), 0.75 - 0.14 * cos(uTime * 0.5));
+          vec2 c1 = vec2(0.5 + 0.38 * sin(phSlow), 0.75 - 0.14 * cos(phMid));
           float d1 = length((uv - c1) * vec2(aspect, 1.0));
           col += uGlowA * smoothstep(0.55, 0.0, d1) * (0.55 * pulse);
 
-          vec2 c2 = vec2(0.5 + 0.38 * cos(uTime * 0.5 + 1.5), 0.28 - 0.14 * sin(uTime * 0.55 + 0.7));
+          vec2 c2 = vec2(0.5 + 0.38 * cos(phMid + 1.5), 0.28 - 0.14 * sin(phSlow2 + 0.7));
           float d2 = length((uv - c2) * vec2(aspect, 1.0));
           col += uGlowB * smoothstep(0.6, 0.0, d2) * (0.5 * (1.6 - pulse));
 
-          float px = mod(uTime * 0.12, 1.6) - 0.3;
+          float px = phBand - 0.3;
           float bd = abs(uv.x - px + (uv.y - 0.5) * 0.32);
           col += vec3(1.0) * smoothstep(0.14, 0.0, bd) * 0.05;
+
+          // Roxo por cima do banner (translúcido atrás).
+          if (uBannerOn > 0.5) col = mix(bc, col, uGradCover);
 
           float gx = smoothstep(0.985, 1.0, fract(uv.x * 12.0));
           float gy = smoothstep(0.992, 1.0, fract(uv.y * 24.0));
           col += vec3(1.0) * (gx + gy) * 0.02;
 
           if (uStars > 0.5) {
-            vec2 sp = vec2(uv.x * 36.0, uv.y * 64.0 + uTime * 0.8);
+            // Scroll enrolado em 64 células: a coordenada nunca cresce,
+            // então nunca forma rastro branco de cima pra baixo.
+            vec2 sp = vec2(uv.x * 36.0, uv.y * 64.0 + starScroll);
             vec2 cell = floor(sp);
             vec2 f = fract(sp);
             float h = hash21(cell);
             float on = step(1.0 - uStars * 0.004, h);
             vec2 spos = vec2(hash21(cell + 7.13), hash21(cell + 3.71));
             float sd = length(f - spos);
-            float tw = 0.5 + 0.5 * sin(uTime * 3.0 + h * 40.0);
+            float tw = 0.5 + 0.5 * sin(phTw + h * 40.0);
             col += vec3(0.9, 0.86, 1.0) * (smoothstep(0.11, 0.0, sd) * on * tw);
           }
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Roxo do ícone do launcher (usado como fallback / tema). -->
+    <color name="ic_launcher_background">#4C1D95</color>
+</resources>

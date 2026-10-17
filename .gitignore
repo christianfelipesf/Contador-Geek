@@ -26,3 +26,6 @@ Desktop.ini
 # Temp
 *.tmp
 *.log
+
+# Artes originais (pesadas). O app usa app/src/main/assets/banners/.
+banner/

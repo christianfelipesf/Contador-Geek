@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Relógio da contagem regressiva em branco, com disco e ponteiro lilás,
+     sobre o gradiente roxo do fundo. Desenho dentro da zona segura. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- disco translúcido: separa o relógio do fundo -->
+    <path
+        android:fillColor="#3DFFFFFF"
+        android:pathData="M54,54 m-32,0 a32,32 0 1,0 64,0 a32,32 0 1,0 -64,0" />
+
+    <!-- marcas de 12 / 3 / 6 / 9 horas -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C4B5FD"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,33.5 L54,38.5" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C4B5FD"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M74.5,54 L69.5,54" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C4B5FD"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,74.5 L54,69.5" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C4B5FD"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M33.5,54 L38.5,54" />
+
+    <!-- anel do relógio -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6.5"
+        android:pathData="M54,54 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0" />
+
+    <!-- ponteiro das horas -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L54,42" />
+
+    <!-- ponteiro dos minutos -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F0ABFC"
+        android:strokeWidth="6.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L68,60" />
+
+    <!-- pino central -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49.5,54 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
+</vector>

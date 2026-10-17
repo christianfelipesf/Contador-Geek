@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview do ícone — Countdown Geek</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 32px 20px 60px;
+    background: #0b1020; color: #e2e8f0;
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 20px; text-align: center; color: #fff; margin: 0 0 6px; }
+  p.sub { text-align: center; color: #94a3b8; font-size: 13px; margin: 0 0 28px; }
+  h2 { font-size: 14px; color: #a78bfa; text-align: center; margin: 34px 0 14px;
+       text-transform: uppercase; letter-spacing: .08em; }
+  .row { display: flex; flex-wrap: wrap; gap: 26px; justify-content: center; align-items: flex-end; }
+  .item { text-align: center; }
+  .item span { display: block; margin-top: 10px; font-size: 11px; color: #94a3b8; }
+  .pad { display: inline-block; background: #11162a; border-radius: 14px; padding: 10px; }
+  .launcher { width: 300px; height: 300px; border-radius: 0;
+              background: linear-gradient(160deg, #131a33, #0a0e1c);
+              display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+  <h1>Ícone novo — Countdown Geek</h1>
+  <p class="sub">Roxo com gradiente + relógio branco (gerado dos mesmos vetores do app).</p>
+
+  <h2>Recorte redondo (ic_launcher_round)</h2>
+  <div class="row">
+    <div class="item"><span class="pad" id="round180"></span><span>180 px</span></div>
+    <div class="item"><span class="pad" id="round96"></span><span>96 px</span></div>
+    <div class="item"><span class="pad" id="round64"></span><span>64 px (launcher)</span></div>
+    <div class="item"><span class="pad" id="round48"></span><span>48 px</span></div>
+  </div>
+
+  <h2>Recorte "squircle" e quadrado (adaptive icon)</h2>
+  <div class="row">
+    <div class="item"><span class="pad" id="sq144"></span><span>144 px</span></div>
+    <div class="item"><span class="pad" id="sq96"></span><span>96 px</span></div>
+    <div class="item"><span class="pad" id="full96"></span><span>108dp cheio</span></div>
+  </div>
+
+  <h2>Como aparece na tela inicial</h2>
+  <div class="row">
+    <div class="item launcher" id="phone"><span>—</span></div>
+  </div>
+
+<script>
+// Mesmos caminhos de app/src/main/res/drawable/ic_launcher_foreground.xml
+const DEFS = `
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#8B5CF6"/>
+    <stop offset="0.45" stop-color="#6D28D9"/>
+    <stop offset="1" stop-color="#2E1065"/>
+  </linearGradient>
+</defs>`;
+
+function content() {
+  return `
+  <rect x="0" y="0" width="108" height="108" fill="url(#bg)"/>
+  <circle cx="54" cy="54" r="32" fill="#ffffff" fill-opacity="0.24"/>
+  <g stroke="#C4B5FD" stroke-width="4.5" stroke-linecap="round">
+    <line x1="54" y1="33.5" x2="54" y2="38.5"/>
+    <line x1="74.5" y1="54" x2="69.5" y2="54"/>
+    <line x1="54" y1="74.5" x2="54" y2="69.5"/>
+    <line x1="33.5" y1="54" x2="38.5" y2="54"/>
+  </g>
+  <circle cx="54" cy="54" r="27" fill="none" stroke="#ffffff" stroke-width="6.5"/>
+  <line x1="54" y1="54" x2="54" y2="42" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+  <line x1="54" y1="54" x2="68" y2="60" stroke="#F0ABFC" stroke-width="6.5" stroke-linecap="round"/>
+  <circle cx="54" cy="54" r="4.5" fill="#ffffff"/>`;
+}
+
+function icon(size, clip) {
+  const id = 'c' + Math.random().toString(36).slice(2, 8);
+  const clipDef = clip === 'round'
+    ? `<clipPath id="${id}"><circle cx="54" cy="54" r="54"/></clipPath>`
+    : clip === 'squircle'
+      ? `<clipPath id="${id}"><rect x="0" y="0" width="108" height="108" rx="24" ry="24"/></clipPath>`
+      : '';
+  const clipAttr = clipDef ? ` clip-path="url(#${id})"` : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 108 108">${DEFS}${clipDef}<g${clipAttr}>${content()}</g></svg>`;
+}
+
+const fill = (id, size, clip) => {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = icon(size, clip);
+};
+
+fill('round180', 180, 'round');
+fill('round96', 96, 'round');
+fill('round64', 64, 'round');
+fill('round48', 48, 'round');
+fill('sq144', 144, 'squircle');
+fill('sq96', 96, 'squircle');
+fill('full96', 96, null);
+
+// "Tela inicial" com alguns apps genéricos em volta
+document.getElementById('phone').innerHTML = `
+  <div style="display:grid;grid-template-columns:repeat(4,56px);gap:14px;justify-items:center">
+    ${[1,2,3].map(() => `<div style="width:56px;height:56px;border-radius:17px;background:#1e2647"></div>`).join('')}
+    <div style="width:56px;height:56px;border-radius:17px;overflow:hidden">${icon(56,'round')}</div>
+    ${[1,2,3,4,5,6,7].map(() => `<div style="width:56px;height:56px;border-radius:17px;background:#1e2647"></div>`).join('')}
+  </div>`;
+</script>
+</body>
+</html>

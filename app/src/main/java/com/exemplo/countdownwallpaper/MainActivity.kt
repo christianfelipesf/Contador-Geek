@@ -48,6 +48,14 @@ class MainActivity : Activity() {
         layout.addView(titulo("Countdown Geek"))
         layout.addView(subtitulo("Vision Quest • Zelda OOT • GTA 6 • Vingadores Doomsday"))
 
+        layout.addView(rotulo("Pré-visualização ao vivo:"))
+        layout.addView(BannerPreviewView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (220 * resources.displayMetrics.density).toInt()
+            ).apply { setMargins(0, 8, 0, 8) }
+        })
+
         layout.addView(Button(this).apply {
             text = "Definir como papel de parede"
             setOnClickListener { abrirSeletorWallpaper() }
@@ -78,15 +86,19 @@ class MainActivity : Activity() {
         layout.addView(lblVel); layout.addView(skVel)
 
         val lblFps = rotulo("")
-        val frames = intArrayOf(16, 33, 66, 120) // ~60/30/15/8 fps (fundo em GPU aguenta 60)
+        // Engine V2: vsync + throttle (equilíbrio 30fps). 16 = performance 60fps.
+        val frames = longArrayOf(16L, 33L, 50L, 66L)
+        val nomes = arrayOf("Performance ~60fps", "Equilíbrio ~30fps (recomendado)", "Eco ~20fps", "Super eco ~15fps")
         val skFps = SeekBar(this).apply { max = 3 }
-        fun mostraFps(i: Int) { lblFps.text = "Fluidez: ~${1000 / frames[i]} fps" }
-        val fiPadrao = frames.indexOf(p.getInt(Prefs.FRAME_MS, 33)).coerceAtLeast(0)
+        fun mostraFps(i: Int) { lblFps.text = "Fluidez: ${nomes[i]}" }
+        val salvo = try { p.getLong(Prefs.FRAME_TARGET_MS, p.getInt(Prefs.FRAME_MS, 33).toLong()) } catch (e: Exception) { 33L }
+        val idxSalvo = frames.indexOfFirst { it == salvo }
+        val fiPadrao = if (idxSalvo >= 0) idxSalvo else 1
         skFps.progress = fiPadrao; mostraFps(fiPadrao)
         skFps.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
                 mostraFps(v)
-                p.edit().putInt(Prefs.FRAME_MS, frames[v]).apply()
+                p.edit().putLong(Prefs.FRAME_TARGET_MS, frames[v]).apply()
             }
             override fun onStartTrackingTouch(s: SeekBar?) {}
             override fun onStopTrackingTouch(s: SeekBar?) {}
@@ -152,6 +164,74 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, v -> p.edit().putBoolean(Prefs.ZOOM, v).apply() }
         })
 
+        layout.addView(secao("Banners no fundo"))
+
+        layout.addView(CheckBox(this).apply {
+            text = "Banners geek no fundo (roxo por cima)"; setTextColor(Color.WHITE)
+            isChecked = p.getBoolean(Prefs.BANNERS, true)
+            setOnCheckedChangeListener { _, v -> p.edit().putBoolean(Prefs.BANNERS, v).apply() }
+        })
+
+        val lblBms = rotulo("")
+        val skBms = SeekBar(this).apply { max = 22 } // 8..30s parado
+        fun mostraBms(v: Int) { lblBms.text = "Tempo parado por banner: ${v + 8}s" }
+        skBms.progress = (p.getLong(Prefs.BANNER_MS, 18000L) / 1000).toInt().coerceIn(8, 30) - 8
+        mostraBms(skBms.progress)
+        skBms.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
+                mostraBms(v)
+                p.edit().putLong(Prefs.BANNER_MS, (v + 8) * 1000L).apply()
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        layout.addView(lblBms); layout.addView(skBms)
+
+        val lblBtr = rotulo("")
+        val skBtr = SeekBar(this).apply { max = 5 } // 0.5..3.0s de transição
+        fun mostraBtr(v: Int) { lblBtr.text = "Transição entre banners: ${(v + 1) * 500}ms" }
+        skBtr.progress = (p.getLong(Prefs.BANNER_TR, 1500L) / 500).toInt().coerceIn(1, 6) - 1
+        mostraBtr(skBtr.progress)
+        skBtr.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
+                mostraBtr(v)
+                p.edit().putLong(Prefs.BANNER_TR, (v + 1) * 500L).apply()
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        layout.addView(lblBtr); layout.addView(skBtr)
+
+        val lblPan = rotulo("")
+        val skPan = SeekBar(this).apply { max = 60 } // 0..60 px/s (0 = parado)
+        fun mostraPan(v: Int) { lblPan.text = if (v == 0) "Pan lateral: parado" else "Pan lateral: $v px/s" }
+        skPan.progress = p.getInt(Prefs.BANNER_PAN, 10).coerceIn(0, 60)
+        mostraPan(skPan.progress)
+        skPan.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
+                mostraPan(v)
+                p.edit().putInt(Prefs.BANNER_PAN, v).apply()
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        layout.addView(lblPan); layout.addView(skPan)
+
+        val lblShade = rotulo("")
+        val skShade = SeekBar(this).apply { max = 65 } // 30..95% de cobertura roxa
+        fun mostraShade(v: Int) { lblShade.text = "Cobertura roxa: ${v + 30}%" }
+        skShade.progress = p.getInt(Prefs.BANNER_SHADE, 68).coerceIn(30, 95) - 30
+        mostraShade(skShade.progress)
+        skShade.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
+                mostraShade(v)
+                p.edit().putInt(Prefs.BANNER_SHADE, v + 30).apply()
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        layout.addView(lblShade); layout.addView(skShade)
+
         // ---------- CORES ----------
         layout.addView(secao("Cores do fundo (topo / meio / base)"))
 
@@ -168,11 +248,29 @@ class MainActivity : Activity() {
             }
         }
 
-        val rowTemas = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        rowTemas.addView(preset("Roxo", "#150826", "#6D28D9", "#2E1065"))
-        rowTemas.addView(preset("Oceano", "#020617", "#0369A1", "#082F49"))
-        rowTemas.addView(preset("Fogo", "#1C0A00", "#C2410C", "#431407"))
-        layout.addView(rowTemas)
+        val linhas = listOf(
+            listOf(
+                arrayOf("Roxo", "#150826", "#6D28D9", "#2E1065"),
+                arrayOf("Oceano", "#020617", "#0369A1", "#082F49"),
+                arrayOf("Fogo", "#1C0A00", "#C2410C", "#431407")
+            ),
+            listOf(
+                arrayOf("Verde", "#02120A", "#16A34A", "#052E16"),
+                arrayOf("Sunset", "#20063B", "#EC4899", "#F59E0B"),
+                arrayOf("Meia-noite", "#000000", "#1D4ED8", "#020617")
+            )
+        )
+        linhas.forEach { linha ->
+            val rowLayout = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            linha.forEach { t ->
+                rowLayout.addView(preset(t[0], t[1], t[2], t[3]).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                    )
+                })
+            }
+            layout.addView(rowLayout)
+        }
 
         fun etCor(valor: String) = EditText(this).apply {
             setText(valor); setTextColor(Color.WHITE); textSize = 13f

@@ -10,6 +10,15 @@ def epoch = new Date(126, 0, 1) // 2026-01-01
 def buildNumber = ((now.time - epoch.time) / 1000).toInteger()
 def stamp = now.format('yyyyMMdd-HHmm')
 
+// Assinatura do APK release (instalável fora da Play): chaves em
+// local.properties (gitignored). Sem elas, o release sai unsigned.
+def ksProps = new Properties()
+def ksFile = rootProject.file("local.properties")
+if (ksFile.exists()) {
+    ksFile.withInputStream { ksProps.load(it) }
+}
+def hasReleaseKs = ksProps.getProperty("release.storeFile")?.trim()
+
 android {
     namespace 'com.exemplo.countdownwallpaper'
     compileSdk 34
@@ -22,9 +31,23 @@ android {
         versionName "1.0.${stamp}"
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseKs) {
+                storeFile file(hasReleaseKs)
+                storePassword ksProps.getProperty("release.storePassword")
+                keyAlias ksProps.getProperty("release.keyAlias")
+                keyPassword ksProps.getProperty("release.keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+            if (hasReleaseKs) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {
@@ -38,5 +61,6 @@ android {
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     testImplementation 'junit:junit:4.13.2'
 }

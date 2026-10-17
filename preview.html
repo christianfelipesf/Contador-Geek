@@ -7,7 +7,7 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
   body{background:#0B1020;color:white;display:flex;justify-content:center;min-height:100vh}
-  .phone{width:400px;max-width:100vw;min-height:100vh;padding:40px 18px 20px;display:flex;flex-direction:column;position:relative;overflow:hidden;
+  .phone{width:400px;max-width:100vw;min-height:100vh;padding:28px 18px 20px;display:flex;flex-direction:column;position:relative;overflow:hidden;
     background:linear-gradient(135deg,#150826,#6D28D9,#EC4899,#2E1065);
     background-size:300% 300%;animation:fundo 12s ease-in-out infinite}
   @keyframes fundo{0%,100%{background-position:0% 20%}50%{background-position:100% 80%}}
@@ -17,26 +17,31 @@
   @keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(120px,90px)}}
   @keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-110px,-80px)}}
   #stars{position:absolute;inset:0;pointer-events:none}
-  .top{text-align:center;margin-bottom:18px;position:relative;z-index:2}
+  #banners{position:absolute;inset:0;z-index:0;overflow:hidden}
+  #banners img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.6s ease}
+  #banners img.on{opacity:1}
+  #banners::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(21,8,38,.72),rgba(109,40,217,.5),rgba(46,16,101,.72));opacity:var(--shade,.68)}
+  .top{text-align:center;margin-bottom:12px;position:relative;z-index:2}
   .top small{color:#DDD6FE;letter-spacing:4px}
   .top h1{font-size:28px;margin-top:4px;text-shadow:0 2px 18px #7C3AED}
   #lista{position:relative;z-index:2}
-  .card{background:rgba(30,16,60,.78);border:1px solid rgba(168,85,247,.35);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;backdrop-filter:blur(2px);transition:transform .5s ease,box-shadow .5s ease,border-color .5s ease,background .5s ease}
+  .card{background:rgba(30,16,60,.78);border:1px solid rgba(168,85,247,.35);border-radius:16px;padding:13px 16px 11px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;backdrop-filter:blur(2px);transition:transform .5s ease,box-shadow .5s ease,border-color .5s ease,background .5s ease}
   .card.sel{transform:scale(1.04);background:rgba(52,28,100,.88);border-color:transparent}
   .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--cor)}
   .info{padding-left:10px}
   .info b{font-size:16px}
   .info span{display:block;color:#E2E8F0;font-size:13px;margin-top:4px}
   .thumb{width:56px;height:56px;border-radius:12px;background:linear-gradient(45deg,var(--cor),#4C1D95);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;margin-left:10px}
-  .dias{font-size:34px;font-weight:900;text-align:right}
+  .dias{font-size:28px;font-weight:900;text-align:right}
   .dias small{display:block;font-size:12px;font-weight:400;color:#DDD6FE}
   .foot{text-align:center;color:#DDD6FE;font-size:12px;margin-top:auto;padding-top:16px;position:relative;z-index:2}
 </style>
 </head>
 <body>
 <div class="phone">
-  <div class="brilho b1"></div><div class="brilho b2"></div><canvas id="stars"></canvas>
+  <div class="brilho b1"></div><div class="brilho b2"></div><div id="banners"></div><canvas id="stars"></canvas>
   <div class="top"><small>FALTAM</small><h1>COUNTDOWN GEEK</h1><small id="hoje"></small></div>
+  <div style="position:relative;z-index:2;text-align:center;font-size:12px;color:#DDD6FE;margin-bottom:10px">Cobertura roxa: <input id="shade" type="range" min="30" max="95" value="68" style="vertical-align:middle"> <b id="shadev">68%</b></div>
   <div id="lista"></div>
   <div class="foot">Atualiza sozinho todo dia • Live Wallpaper</div>
 </div>
@@ -66,6 +71,31 @@
   setInterval(()=>{const cards=[...document.querySelectorAll('#lista .card')];if(!cards.length)return;
     const k=Math.floor(Date.now()/3000)+HOFF,n=cards.length,cur=k%n;
     cards.forEach((el,i)=>el.classList.toggle('sel',i===cur));},200);
+  // banners no fundo com roxo por cima: crossfade aleatório + pan leve
+  const BN=["app/src/main/assets/banners/doomsday.jpg","app/src/main/assets/banners/gta6.jpg",
+    "app/src/main/assets/banners/vision_quest_2026.jpg","app/src/main/assets/banners/zelda.jpg"];
+  const bdiv=document.getElementById('banners');
+  const bims=BN.map(s=>{const i=document.createElement('img');i.src=s;bdiv.appendChild(i);return i;});
+  let bord=bims.map((_,k)=>k), bptr=0;
+  function bshuffle(){for(let k=bord.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[bord[k],bord[j]]=[bord[j],bord[k]];}}
+  bshuffle();
+  function showBanner(){
+    const im=bims[bord[bptr]];
+    bims.forEach(m=>m.classList.toggle('on',m===im));
+    const x0=(Math.random()*8-4).toFixed(1),y0=(Math.random()*8-4).toFixed(1);
+    const x1=(Math.random()*8-4).toFixed(1),y1=(Math.random()*8-4).toFixed(1);
+    // mesma velocidade pra todos: duração proporcional à distância
+    const dist=Math.hypot(x1-x0,y1-y0), dur=Math.min(20,Math.max(6,dist*1.1)).toFixed(1);
+    im.style.transition='none';im.style.transform=`scale(1.15) translate(${x0}%,${y0}%)`;
+    void im.offsetWidth;
+    im.style.transition=`transform ${dur}s linear`;im.style.transform=`scale(1.15) translate(${x1}%,${y1}%)`;
+    bptr++;
+    if(bptr>=bord.length){bshuffle();bptr=0;}
+  }
+  showBanner();setInterval(showBanner,18000);
+  // cobertura roxa ajustável (igual ao slider BANNER_SHADE do app)
+  const sh=document.getElementById('shade'),shv=document.getElementById('shadev');
+  sh.addEventListener('input',()=>{bdiv.style.setProperty('--shade',(sh.value/100).toFixed(2));shv.textContent=sh.value+'%';});
   // partículas subindo (igual ao wallpaper)
   const cv=document.getElementById('stars'),ctx=cv.getContext('2d');let P=[];
   function sizeCv(){const p=cv.parentElement;cv.width=p.clientWidth;cv.height=p.clientHeight;
