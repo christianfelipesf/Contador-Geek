@@ -1,14 +1,25 @@
-name: Build Wallpaper APK
+name: Build & Release APK
+
+# Gera o APK, roda os testes e publica no GitHub Releases.
+#  - push na main / execução manual -> atualiza a release de tag "latest"
+#    (o link de download é sempre o mesmo, veja o README);
+#  - push de uma tag "v*" -> cria a release daquela versão.
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   workflow_dispatch:
+
+# Necessário pro gh criar/editar a release com o token do próprio Actions.
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -26,25 +37,121 @@ jobs:
             export ANDROID_HOME="$ANDROID_SDK_ROOT"
           fi
           echo "SDK em: $ANDROID_SDK_ROOT"
-          ls "$ANDROID_SDK_ROOT/cmdline-tools/" || true
           SDKMANAGER=$(ls "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n 1)
           echo "Usando sdkmanager: $SDKMANAGER"
           "$SDKMANAGER" --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
 
-      - name: Run unit tests
-        run: gradle :app:testDebugUnitTest --stacktrace
+      # A keystore fica num secret em base64 (nunca no repositório).
+      # Sem o secret, o release sai sem assinatura e o build publica o APK
+      # de debug no lugar (esse instala, mas com a chave de debug).
+      - name: Preparar assinatura do release
+        id: assinatura
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Keystore do release carregada do secret."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secret RELEASE_KEYSTORE_BASE64 ausente: o APK de release sairia sem assinatura, então o build vai publicar o APK de debug."
+          fi
 
-      - name: Build Debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Testes unitários
+        run: gradle :app:testDebugUnitTest --stacktrace --console=plain
 
-      - name: Upload APK
+      - name: Build Debug
+        run: gradle :app:assembleDebug --stacktrace --console=plain
+
+      - name: Build Release (assinado)
+        if: steps.assinatura.outputs.signed == 'true'
+        env:
+          RELEASE_STORE_FILE: ${{ runner.temp }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --stacktrace --console=plain
+
+      - name: Separar APKs e ler a versão
+        id: apks
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/CountdownGeek-debug.apk
+          if [ "${SIGNED}" = "true" ] && [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk dist/CountdownGeek-release.apk
+            PRINCIPAL=dist/CountdownGeek-release.apk
+            echo "principal=CountdownGeek-release.apk" >> "$GITHUB_OUTPUT"
+          else
+            PRINCIPAL=dist/CountdownGeek-debug.apk
+            echo "principal=CountdownGeek-debug.apk" >> "$GITHUB_OUTPUT"
+          fi
+          AAPT2=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/aapt2 | head -n 1)
+          VERSION=$("$AAPT2" dump badging "$PRINCIPAL" | sed -n "s/^package:.*versionName='\([^']*\)'.*/\1/p")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Versão do APK: $VERSION"
+          ls -lh dist
+        env:
+          SIGNED: ${{ steps.assinatura.outputs.signed }}
+
+      - name: Artifacts do Actions
         uses: actions/upload-artifact@v4
         with:
           name: countdown-wallpaper-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: dist/*.apk
+
+      - name: Publicar no GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.apks.outputs.version }}
+          PRINCIPAL: ${{ steps.apks.outputs.principal }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            TITLE="Contador Geek ${GITHUB_REF_NAME}"
+          else
+            TAG="latest"
+            TITLE="Contador Geek — build mais recente"
+          fi
+
+          {
+            printf '%s\n' '### ⏳ Countdown Geek / Contador Geek' ''
+            printf '%s\n' "**Versão:** \`${VERSION}\`  "
+            printf '%s\n' "**Commit:** \`${GITHUB_SHA::7}\`  "
+            printf '%s\n' "**Gerado em:** $(date -u '+%d/%m/%Y %H:%M') UTC" ''
+            printf '%s\n' 'Papel de parede animado de contagem regressiva (Vision Quest, Zelda OOT, GTA 6 e Vingadores Doomsday).' ''
+            printf '%s\n' '#### 📥 Instalar' \
+              "1. Baixe **${PRINCIPAL}** no celular." \
+              '2. Abra o arquivo e permita "instalar de fontes desconhecidas" se pedir.' \
+              '3. Segure na tela inicial → Papel de parede → Papéis de parede animados → **Contador Geek**.' ''
+            printf '%s\n' '#### 📦 Arquivos'
+            if [ "${PRINCIPAL}" = "CountdownGeek-release.apk" ]; then
+              printf '%s\n' \
+                '- `CountdownGeek-release.apk` — assinado com a chave do projeto (instala por cima da versão anterior).' \
+                '- `CountdownGeek-debug.apk` — versão de teste (exige desinstalar antes).'
+            else
+              printf '%s\n' \
+                '- `CountdownGeek-debug.apk` — chave de release não configurada, então este é o instalável.' \
+                '- Sem os secrets de assinatura o APK de release sai sem assinar (não instala).'
+            fi
+            printf '%s\n' '' '> Todos os APKs têm o mesmo conteúdo; muda só a assinatura.'
+          } > notes.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG já existe: atualizando assets."
+            gh release upload "$TAG" dist/*.apk --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
+          else
+            echo "Criando release $TAG."
+            gh release create "$TAG" dist/*.apk \
+              --title "$TITLE" \
+              --notes-file notes.md \
+              --target "$GITHUB_SHA" \
+              || { echo "::warning::Não deu pra criar a release $TAG — tentando anexar na que já existe."; gh release upload "$TAG" dist/*.apk --clobber; }
+          fi

@@ -13,6 +13,7 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 [![OpenGL ES 2.0](https://img.shields.io/badge/OpenGL%20ES-2.0-5586A4?logo=opengl&logoColor=white)](#-como-funciona)
 [![Testes](https://img.shields.io/badge/testes-16%20passando-success)](#-testes)
 [![APK](https://img.shields.io/badge/APK-2%2C3%20MB-blue)](#-gerar-o-apk)
+[![Baixar APK](https://img.shields.io/badge/%E2%AC%87-baixar%20APK-8B5CF6?logo=android&logoColor=white)](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-release.apk)
 [![Idiomas](https://img.shields.io/badge/idiomas-pt%20%7C%20en%20%7C%20es-orange)](#-idiomas)
 
 </div>
@@ -163,7 +164,47 @@ Saída:
 - A assinatura do release vem de `local.properties` (fora do Git). Sem as chaves, o release sai sem assinar.
 - `--offline` funciona depois do primeiro build (que baixa as dependências).
 - Sem Android Studio? Siga [`COMPILAR-SEM-ANDROID-STUDIO.txt`](COMPILAR-SEM-ANDROID-STUDIO.txt) (5 opções, da nuvem ao Termux) ou [`LEIA-ME-COMO-GERAR-APK.txt`](LEIA-ME-COMO-GERAR-APK.txt).
-- **Na nuvem, sem instalar nada**: o workflow [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml) roda os testes, compila o debug e publica o APK em *Actions → Build Wallpaper APK → Artifacts*.
+- **Na nuvem, sem instalar nada**: o workflow [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml) roda os testes, compila o debug e publica o APK direto no **GitHub Releases** (veja abaixo).
+
+<div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
+
+## 🚀 GitHub Releases (download automático)
+
+Todo push na `main` compila e **publica o APK na página de Releases**. Dá pra instalar direto do celular, sem baixar zip de artifact:
+
+```text
+https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-release.apk
+```
+
+| Quando | O que acontece |
+|---|---|
+| Push na `main` ou execução manual (*Actions → Build & Release APK → Run workflow*) | Atualiza a release de tag `latest` — **o link acima nunca muda** |
+| Push de uma tag `v*` (`git tag v1.0 && git push origin v1.0`) | Cria a release daquela versão, com o mesmo APK |
+| Sem os secrets de assinatura configurados | Publica o **debug** no lugar do release (senão sairia um APK sem assinatura, que não instala) |
+
+O workflow roda os 16 testes → compila debug e release (assinado) → sobe os dois como *artifact* do Actions → anexa na release com o resumo pronto (versão, commit, data e passo a passo de instalação).
+
+### Configurar a assinatura (uma vez, ~2 min)
+
+A chave **nunca** vai pro repositório: ela é guardada num secret, em base64.
+
+1. Gere o base64 da keystore:
+
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Android\countdown-release.keystore")) | Set-Clipboard
+   ```
+2. No GitHub: **Settings → Secrets and variables → Actions → New repository secret**, criando os quatro:
+
+| Secret | Valor |
+|---|---|
+| `RELEASE_KEYSTORE_BASE64` | o texto que ficou na área de transferência |
+| `RELEASE_STORE_PASSWORD` | senha da keystore (`release.storePassword`) |
+| `RELEASE_KEY_ALIAS` | alias da chave (`release.keyAlias`) |
+| `RELEASE_KEY_PASSWORD` | senha da chave (`release.keyPassword`) |
+
+> ⚠️ **Use a mesma keystore do `local.properties`.** É ela que garante que o APK da release instala por cima da versão que já está no celular — assinatura diferente exigiria desinstalar antes.
+>
+> Sem os secrets, a release sai apenas com `CountdownGeek-debug.apk`; o link `…/CountdownGeek-release.apk` só passa a existir depois que a assinatura estiver configurada (basta rodar o workflow de novo em *Actions → Run workflow*).
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 

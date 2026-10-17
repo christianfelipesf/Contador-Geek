@@ -10,14 +10,25 @@ def epoch = new Date(126, 0, 1) // 2026-01-01
 def buildNumber = ((now.time - epoch.time) / 1000).toInteger()
 def stamp = now.format('yyyyMMdd-HHmm')
 
-// Assinatura do APK release (instalável fora da Play): chaves em
-// local.properties (gitignored). Sem elas, o release sai unsigned.
+// Assinatura do APK release (instalável fora da Play). As chaves vêm de:
+//  1) local.properties (build na sua máquina - gitignored), ou
+//  2) variáveis de ambiente (usado pelo GitHub Actions, com o keystore
+//     gravado a partir do secret RELEASE_KEYSTORE_BASE64).
+// Sem nenhuma das duas, o release sai app-release-unsigned.apk.
 def ksProps = new Properties()
 def ksFile = rootProject.file("local.properties")
 if (ksFile.exists()) {
     ksFile.withInputStream { ksProps.load(it) }
 }
-def hasReleaseKs = ksProps.getProperty("release.storeFile")?.trim()
+def ksStoreFile = System.getenv("RELEASE_STORE_FILE")?.trim() ?: ksProps.getProperty("release.storeFile")?.trim()
+def ksStorePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: ksProps.getProperty("release.storePassword")
+def ksKeyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: ksProps.getProperty("release.keyAlias")
+def ksKeyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: ksProps.getProperty("release.keyPassword")
+def hasReleaseKs = ksStoreFile && ksStorePassword && ksKeyAlias && ksKeyPassword
+
+if (!hasReleaseKs) {
+    logger.lifecycle("Assinatura release: SEM chaves (sai app-release-unsigned.apk). Debug nao e afetado.")
+}
 
 android {
     namespace 'com.exemplo.countdownwallpaper'
@@ -34,10 +45,10 @@ android {
     signingConfigs {
         release {
             if (hasReleaseKs) {
-                storeFile file(hasReleaseKs)
-                storePassword ksProps.getProperty("release.storePassword")
-                keyAlias ksProps.getProperty("release.keyAlias")
-                keyPassword ksProps.getProperty("release.keyPassword")
+                storeFile file(ksStoreFile)
+                storePassword ksStorePassword
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPassword
             }
         }
     }
