@@ -75,6 +75,30 @@ class CountdownLogicTest {
     }
 
     @Test
+    fun `textoHoras vazio na meia-noite exata`() {
+        // A conta antiga dava 24h; num relógio isso não existe e aparecia
+        // por um instante em "AMANHÃ!".
+        assertEquals(
+            "",
+            CountdownLogic.textoHoras(
+                LocalDateTime.of(2026, 10, 20, 0, 0),
+                LocalDateTime.of(2026, 10, 21, 0, 0)
+            )
+        )
+    }
+
+    @Test
+    fun `textoHoras uma hora antes do alvo`() {
+        assertEquals(
+            "1h",
+            CountdownLogic.textoHoras(
+                LocalDateTime.of(2026, 10, 20, 23, 0),
+                LocalDateTime.of(2026, 10, 21, 0, 0)
+            )
+        )
+    }
+
+    @Test
     fun `fracaoRestante no inicio da janela`() {
         assertEquals(
             1f,

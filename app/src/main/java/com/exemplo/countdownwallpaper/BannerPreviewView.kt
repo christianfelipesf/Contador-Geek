@@ -58,12 +58,12 @@ class BannerPreviewView @JvmOverloads constructor(
         isFakeBoldText = true
     }
 
-    // (rótulo curto, data-alvo) — mesmo espírito dos eventos reais.
+    // (rótulo curto, data-alvo) — mesmas datas do wallpaper (Eventos.kt).
     private val mockEvents = listOf(
-        "VISION QUEST" to LocalDate.of(2026, 1, 1),
-        "ZELDA" to LocalDate.of(2026, 3, 20),
-        "GTA 6" to LocalDate.of(2026, 5, 26),
-        "DOOMSDAY" to LocalDate.of(2026, 12, 18)
+        "VISION QUEST" to Eventos.VISION,
+        "ZELDA" to Eventos.ZELDA,
+        "GTA 6" to Eventos.GTA,
+        "DOOMSDAY" to Eventos.DOOMSDAY
     )
 
     private val prefListener =
@@ -81,22 +81,46 @@ class BannerPreviewView @JvmOverloads constructor(
         super.onAttachedToWindow()
         loadBitmaps()
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
-        running = true
-        lastT = SystemClock.uptimeMillis()
-        switchAt = lastT
         panPos = Math.random().toFloat()
         panDir = if (Math.random() < 0.5) -1f else 1f
         panFix = Math.random().toFloat()
-        postOnAnimation(ticker)
+        iniciarTicker()
     }
 
     override fun onDetachedFromWindow() {
-        running = false
-        removeCallbacks(ticker)
+        pararTicker()
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
         bitmaps.forEach { it.recycle() }
         bitmaps = emptyList()
         super.onDetachedFromWindow()
+    }
+
+    /**
+     * A prévia é animada; sem isso ela continuava desenhando (e gastando
+     * bateria) quando o app ia para segundo plano ou o diálogo era coberto.
+     */
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility == View.VISIBLE) iniciarTicker() else pararTicker()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (visibility == View.VISIBLE) iniciarTicker() else pararTicker()
+    }
+
+    private fun iniciarTicker() {
+        if (running || !isAttachedToWindow || windowVisibility != View.VISIBLE) return
+        running = true
+        lastT = SystemClock.uptimeMillis()
+        switchAt = lastT
+        removeCallbacks(ticker)
+        postOnAnimation(ticker)
+    }
+
+    private fun pararTicker() {
+        running = false
+        removeCallbacks(ticker)
     }
 
     private fun loadBitmaps() {

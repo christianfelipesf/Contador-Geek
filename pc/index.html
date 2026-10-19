@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Contador Geek — PC</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= PAPEL DE PAREDE ================= -->
+<div id="wallpaper">
+
+  <!-- fundo: gradiente animado + banners + brilhos + estrelas -->
+  <div id="fundo-grad" aria-hidden="true"></div>
+
+  <div id="banner-wrap" aria-hidden="true">
+    <div id="banner-img"></div>
+    <div id="banner-overlay"></div>
+  </div>
+
+  <div id="glow" aria-hidden="true"></div>
+  <div id="grade" aria-hidden="true"></div>
+  <canvas id="estrelas" aria-hidden="true"></canvas>
+  <div id="vinheta" aria-hidden="true"></div>
+
+  <div id="conteudo">
+    <header id="topo">
+      <div class="sobre" data-i18n="faltam">FALTAM</div>
+      <h1 id="titulo">CONTADOR GEEK</h1>
+      <div class="hoje" id="hoje"></div>
+    </header>
+
+    <main id="lista" aria-label="Contagens regressivas"></main>
+
+    <footer id="rodape">
+      <span data-i18n="rodape">Atualiza sozinho todo dia</span>
+      <span class="sep">•</span>
+      <span data-i18n="versaoPc">Versão PC</span>
+    </footer>
+  </div>
+
+  <!-- controles discretos: aparecem ao mexer o mouse -->
+  <div id="acoes">
+    <button id="btn-config" type="button" title="Configurações (S)" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/>
+      </svg>
+    </button>
+    <button id="btn-fullscreen" type="button" title="Tela cheia (F)" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="dica" data-i18n="dica">S = configurações · F = tela cheia</div>
+</div>
+
+<!-- ================= PAINEL DE CONFIGURAÇÕES ================= -->
+<div id="scrim" hidden></div>
+
+<aside id="painel" role="dialog" aria-modal="true" aria-labelledby="painel-titulo" aria-hidden="true">
+  <div class="painel-topo">
+    <h2 id="painel-titulo" data-i18n="config">Configurações</h2>
+    <button id="btn-fechar" type="button" aria-label="Fechar">✕</button>
+  </div>
+
+  <div class="painel-corpo">
+
+    <section>
+      <h3 data-i18n="secAparencia">Aparência</h3>
+
+      <div class="linha-rotulo"><span data-i18n="tema">Tema</span></div>
+      <div id="temas" class="temas"></div>
+
+      <div class="cores">
+        <label class="cor">
+          <span data-i18n="corTopo">Topo</span>
+          <input type="color" id="cor-topo" aria-label="Cor do topo">
+          <code id="hex-topo">#150826</code>
+        </label>
+        <label class="cor">
+          <span data-i18n="corMeio">Meio</span>
+          <input type="color" id="cor-meio" aria-label="Cor do meio">
+          <code id="hex-meio">#6D28D9</code>
+        </label>
+        <label class="cor">
+          <span data-i18n="corBase">Base</span>
+          <input type="color" id="cor-base" aria-label="Cor da base">
+          <code id="hex-base">#2E1065</code>
+        </label>
+      </div>
+      <p class="ajuda" data-i18n="ajudaCores">As cores valem na hora e ficam salvas neste computador.</p>
+    </section>
+
+    <section>
+      <h3 data-i18n="secAnimacao">Animação</h3>
+
+      <label class="controle" for="velocidade">
+        <span class="rotulo"><span data-i18n="velocidade">Velocidade</span> <b id="vel-valor">100%</b></span>
+      </label>
+      <input type="range" id="velocidade" min="25" max="200" step="5" value="100">
+
+      <label class="controle" for="fluidez">
+        <span class="rotulo"><span data-i18n="fluidez">Fluidez</span></span>
+      </label>
+      <select id="fluidez">
+        <option value="60" data-i18n="fps60">Performance ~60 fps</option>
+        <option value="30" data-i18n="fps30">Equilíbrio ~30 fps (recomendado)</option>
+        <option value="20" data-i18n="fps20">Eco ~20 fps</option>
+        <option value="15" data-i18n="fps15">Super eco ~15 fps</option>
+      </select>
+
+      <label class="controle" for="particulas">
+        <span class="rotulo"><span data-i18n="particulas">Partículas</span> <b id="part-valor">30</b></span>
+      </label>
+      <input type="range" id="particulas" min="0" max="80" step="1" value="30">
+
+      <label class="check">
+        <input type="checkbox" id="saver">
+        <span data-i18n="saver">Modo economizador (mínimo consumo)</span>
+      </label>
+      <p class="ajuda" data-i18n="ajudaSaver">Congela o fundo, desliga as estrelas e o destaque, e atualiza só de 2 em 2 segundos.</p>
+    </section>
+
+    <section>
+      <h3 data-i18n="secSelecao">Seleção dos cards</h3>
+
+      <label class="check">
+        <input type="checkbox" id="hover" checked>
+        <span data-i18n="hover">Destacar um card por vez</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="zoom" checked>
+        <span data-i18n="zoom">Card cresce ao selecionar (zoom)</span>
+      </label>
+
+      <label class="controle" for="hover-ms">
+        <span class="rotulo"><span data-i18n="hoverMs">Tempo parado por card</span> <b id="hover-valor">9s</b></span>
+      </label>
+      <input type="range" id="hover-ms" min="3" max="15" step="1" value="9">
+
+      <label class="controle" for="hover-tr">
+        <span class="rotulo"><span data-i18n="hoverTr">Transição entre cards</span> <b id="hovertr-valor">600ms</b></span>
+      </label>
+      <input type="range" id="hover-tr" min="0" max="2000" step="100" value="600">
+    </section>
+
+    <section>
+      <h3 data-i18n="secBanners">Banners no fundo</h3>
+
+      <label class="check">
+        <input type="checkbox" id="banners" checked>
+        <span data-i18n="banners">Banners geek no fundo (roxo por cima)</span>
+      </label>
+
+      <label class="controle" for="banner-ms">
+        <span class="rotulo"><span data-i18n="bannerMs">Tempo parado por banner</span> <b id="banner-valor">18s</b></span>
+      </label>
+      <input type="range" id="banner-ms" min="8" max="30" step="1" value="18">
+
+      <label class="controle" for="banner-tr">
+        <span class="rotulo"><span data-i18n="bannerTr">Transição entre banners</span> <b id="bannertr-valor">1500ms</b></span>
+      </label>
+      <input type="range" id="banner-tr" min="500" max="3000" step="100" value="1500">
+
+      <label class="controle" for="banner-pan">
+        <span class="rotulo"><span data-i18n="pan">Pan lateral</span> <b id="pan-valor">10 px/s</b></span>
+      </label>
+      <input type="range" id="banner-pan" min="0" max="60" step="1" value="10">
+
+      <label class="controle" for="banner-shade">
+        <span class="rotulo"><span data-i18n="shade">Cobertura roxa</span> <b id="shade-valor">68%</b></span>
+      </label>
+      <input type="range" id="banner-shade" min="30" max="95" step="1" value="68">
+    </section>
+
+    <section>
+      <h3 data-i18n="secSistema">Sistema</h3>
+
+      <label class="controle" for="idioma">
+        <span class="rotulo"><span data-i18n="idioma">Idioma</span></span>
+      </label>
+      <select id="idioma">
+        <option value="auto" data-i18n="idiomaSistema">Sistema</option>
+        <option value="pt">Português</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+      </select>
+
+      <button id="btn-restaurar" type="button" class="botao-secundario" data-i18n="restaurar">Restaurar padrão</button>
+      <p class="ajuda" data-i18n="ajudaAtalhos">Atalhos: S abre/fecha esta tela · F alterna a tela cheia · Esc fecha.</p>
+      <p class="versao">Countdown Geek · PC 1.0 · HTML5 local</p>
+    </section>
+
+  </div>
+</aside>
+
+<script src="js/countdown.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

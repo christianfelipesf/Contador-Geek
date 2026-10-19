@@ -1,0 +1,15 @@
+{
+  "name": "countdown-geek-pc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Versão para PC do wallpaper Countdown Geek (HTML5, sem dependências).",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:windowed": "electron . --windowed",
+    "test": "node --test test/countdown.test.js test/markup.test.js"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}

@@ -189,7 +189,7 @@ class MainActivity : Activity() {
         val lblHover = rotulo("")
         val skHover = SeekBar(this).apply { max = 12 } // 3..15s parado
         fun mostraHover(v: Int) { lblHover.text = getString(R.string.cfg_hover_ms, v + 3) }
-        skHover.progress = (p.getLong(Prefs.HOVER_MS, 9000L) / 1000).toInt().coerceIn(0, 12) - 3
+        skHover.progress = ((p.getLong(Prefs.HOVER_MS, 9000L) / 1000).toInt().coerceIn(3, 15) - 3)
         mostraHover(skHover.progress)
         skHover.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {

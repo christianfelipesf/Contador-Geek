@@ -50,10 +50,10 @@ class CountdownWallpaperService : WallpaperService() {
     /** Eventos com nome/subtítulo/cor vindos dos recursos do idioma atual. */
     private fun montarEventos(ctx: Context, inicio: LocalDate): List<Evento> {
         fun sub(id: Int, data: LocalDate) = ctx.getString(id, dataCurta(ctx, data))
-        val vision = LocalDate.of(2026, 10, 21)
-        val zelda = LocalDate.of(2026, 11, 5)
-        val gta = LocalDate.of(2026, 11, 19)
-        val doom = LocalDate.of(2026, 12, 18)
+        val vision = Eventos.VISION
+        val zelda = Eventos.ZELDA
+        val gta = Eventos.GTA
+        val doom = Eventos.DOOMSDAY
         return listOf(
             Evento(
                 ctx.getString(R.string.ev_vision_titulo), ctx.getString(R.string.ev_vision_sub),

@@ -11,7 +11,7 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B%20%28API%2026%29-3DDC84?logo=android&logoColor=white)](#-requisitos)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.24-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![OpenGL ES 2.0](https://img.shields.io/badge/OpenGL%20ES-2.0-5586A4?logo=opengl&logoColor=white)](#-como-funciona)
-[![Testes](https://img.shields.io/badge/testes-16%20passando-success)](#-testes)
+[![Testes](https://img.shields.io/badge/testes-18%20passando-success)](#-testes)
 [![APK](https://img.shields.io/badge/APK-2%2C3%20MB-blue)](#-gerar-o-apk)
 [![Baixar APK](https://img.shields.io/badge/%E2%AC%87-baixar%20APK-8B5CF6?logo=android&logoColor=white)](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-release.apk)
 [![Idiomas](https://img.shields.io/badge/idiomas-pt%20%7C%20en%20%7C%20es-orange)](#-idiomas)
@@ -41,7 +41,7 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 | 🚗 **GTA 6** — PS5 / Xbox | 19/11/2026 | `#F59E0B` |
 | 🛡️ **Vingadores Doomsday** — Cinema | 18/12/2026 | `#EF4444` |
 
-> As datas ficam em um único lugar (`montarEventos`, em `CountdownWallpaperService.kt`) e a proporção da barra é calculada a partir de `15/10/2026` — dia em que a contagem começou.
+> As datas ficam em um único lugar (`Eventos.kt`) e a proporção da barra é calculada a partir de `15/10/2026` — dia em que a contagem começou.
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 
@@ -66,6 +66,29 @@ Três prévias que abrem no navegador — úteis para mexer em layout/datas ante
 | [`preview.html`](preview.html) | O papel de parede animado completo, no navegador |
 | [`preview_cards.html`](preview_cards.html) | Os cartões em **5 telas** (celular pequeno, A17 5G, tablet em pé, tablet deitado, dobrável) usando as mesmas proporções do app |
 | [`preview_icone.html`](preview_icone.html) | O ícone do launcher (normal, redondo, adaptativo e monocromático) |
+
+<div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
+
+## 🖥️ Versão para PC
+
+A pasta [`pc/`](pc/) tem uma versão desktop em **HTML5 puro**, com as mesmas
+datas, banners, temas, modo economizador e 3 idiomas. Não precisa instalar nada
+para testar:
+
+```powershell
+pc\abrir-pc.cmd        # abre em modo app, em tela cheia
+```
+
+| O que | Onde |
+|---|---|
+| Página do wallpaper | [`pc/index.html`](pc/index.html) |
+| Atalho Windows (Chrome/Edge) | [`pc/abrir-pc.cmd`](pc/abrir-pc.cmd) |
+| Guia completo (Lively Wallpaper, Electron, atalhos e ajustes) | [`pc/README.md`](pc/README.md) |
+| Testes da lógica no Node | `cd pc && npm test` (12 testes) |
+
+No Windows, dá para usar como papel de parede de verdade pelo
+[Lively Wallpaper](https://www.rocksdanister.com/lively/): **Add Wallpaper** →
+selecione `pc/index.html` → **Set as Wallpaper**.
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 
@@ -182,7 +205,7 @@ https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/Coun
 | Push de uma tag `v*` (`git tag v1.0 && git push origin v1.0`) | Cria a release daquela versão, com o mesmo APK |
 | Sem os secrets de assinatura configurados | Publica o **debug** no lugar do release (senão sairia um APK sem assinatura, que não instala) |
 
-O workflow roda os 16 testes → compila debug e release (assinado) → sobe os dois como *artifact* do Actions → anexa na release com o resumo pronto (versão, commit, data e passo a passo de instalação).
+O workflow roda os 18 testes → compila debug e release (assinado) → sobe os dois como *artifact* do Actions → anexa na release com o resumo pronto (versão, commit, data e passo a passo de instalação).
 
 ### Configurar a assinatura (uma vez, ~2 min)
 
@@ -216,7 +239,7 @@ A chave **nunca** vai pro repositório: ela é guardada num secret, em base64.
 gradle :app:testDebugUnitTest --offline --console=plain
 ```
 
-**16 testes** cobrindo dias restantes, plural, véspera/hoje/já saiu, horas extras (incluindo o fim da tarde na véspera), a fração da barra nos extremos e os textos vindos do idioma injetado.
+**18 testes** cobrindo dias restantes, plural, véspera/hoje/já saiu, horas extras (incluindo o fim da tarde na véspera e a meia-noite exata), a fração da barra nos extremos e os textos vindos do idioma injetado.
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 
@@ -233,7 +256,8 @@ gradle :app:testDebugUnitTest --offline --console=plain
 │       ├── values-v31/                                 # splash screen
 │       ├── drawable/ mipmap-anydpi-v26/                # ícones
 │       └── xml/                                        # wallpaper, idiomas, backup
-├── app/src/test/                                       # 16 testes unitários
+├── app/src/test/                                       # 18 testes unitários
+├── pc/                                                 # versão para PC (HTML5)
 ├── preview.html  preview_cards.html  preview_icone.html
 └── print/                                              # capturas no aparelho
 ```

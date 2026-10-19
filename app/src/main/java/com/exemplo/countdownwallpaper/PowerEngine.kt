@@ -26,13 +26,19 @@ class PowerEgl {
 
     fun init(surface: Surface, preferGles3: Boolean = false): Boolean {
         release()
-        // ES2 primeiro (caminho conhecido e testado), ES3 só fallback.
-        if (tryInit(surface, 2)) {
+        // ES2 primeiro (caminho conhecido e testado); ES3 como fallback real
+        // quando o aparelho não tem contexto ES2 (antes o fallback nunca era
+        // tentado porque `preferGles3` ficava false no chamador).
+        if (!preferGles3 && tryInit(surface, 2)) {
             isGles3 = false
             return true
         }
-        if (preferGles3 && tryInit(surface, 3)) {
+        if (tryInit(surface, 3)) {
             isGles3 = true
+            return true
+        }
+        if (preferGles3 && tryInit(surface, 2)) {
+            isGles3 = false
             return true
         }
         return false

@@ -35,7 +35,9 @@ object CountdownLogic {
         val horasTotais = minutos / 60
         val dias = ChronoUnit.DAYS.between(agora.toLocalDate(), alvoMeiaNoite.toLocalDate())
         val horas = horasTotais - (dias - 1) * 24
-        return if (horas > 0) textos.horas(horas) else ""
+        // Na virada exata da meia-noite a conta dá 24; "24h" não existe num
+        // relógio e aparecia por um instante em "AMANHÃ!". De 1 a 23 vale.
+        return if (horas > 0L && horas < 24L) textos.horas(horas) else ""
     }
 
     /**
