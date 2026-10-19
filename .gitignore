@@ -23,6 +23,9 @@ local.properties
 Thumbs.db
 Desktop.ini
 
+# Node / Electron (versão PC)
+node_modules/
+
 # Temp
 *.tmp
 *.log

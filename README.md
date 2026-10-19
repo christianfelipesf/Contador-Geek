@@ -14,6 +14,7 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 [![Testes](https://img.shields.io/badge/testes-18%20passando-success)](#-testes)
 [![APK](https://img.shields.io/badge/APK-2%2C3%20MB-blue)](#-gerar-o-apk)
 [![Baixar APK](https://img.shields.io/badge/%E2%AC%87-baixar%20APK-8B5CF6?logo=android&logoColor=white)](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-release.apk)
+[![Baixar PC](https://img.shields.io/badge/%E2%AC%87-baixar%20PC-8B5CF6?logo=windows&logoColor=white)](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-PC.zip)
 [![Idiomas](https://img.shields.io/badge/idiomas-pt%20%7C%20en%20%7C%20es-orange)](#-idiomas)
 
 </div>
@@ -72,18 +73,23 @@ Três prévias que abrem no navegador — úteis para mexer em layout/datas ante
 ## 🖥️ Versão para PC
 
 A pasta [`pc/`](pc/) tem uma versão desktop em **HTML5 puro**, com as mesmas
-datas, banners, temas, modo economizador e 3 idiomas. Não precisa instalar nada
-para testar:
+datas, banners, temas, modo economizador e 3 idiomas. Você pode baixar o zip na
+release ou rodar direto do repositório:
 
 ```powershell
 pc\abrir-pc.cmd        # abre em modo app, em tela cheia
 ```
+
+[⬇ Baixar CountdownGeek-PC.zip](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-PC.zip)
+(extraia a pasta e abra `abrir-pc.cmd` no Windows, ou `index.html` em qualquer
+navegador).
 
 | O que | Onde |
 |---|---|
 | Página do wallpaper | [`pc/index.html`](pc/index.html) |
 | Atalho Windows (Chrome/Edge) | [`pc/abrir-pc.cmd`](pc/abrir-pc.cmd) |
 | Guia completo (Lively Wallpaper, Electron, atalhos e ajustes) | [`pc/README.md`](pc/README.md) |
+| Baixar o zip pronto | [CountdownGeek-PC.zip](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-PC.zip) |
 | Testes da lógica no Node | `cd pc && npm test` (12 testes) |
 
 No Windows, dá para usar como papel de parede de verdade pelo

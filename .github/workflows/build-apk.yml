@@ -100,11 +100,21 @@ jobs:
         env:
           SIGNED: ${{ steps.assinatura.outputs.signed }}
 
+      - name: Empacotar versão PC
+        run: |
+          mkdir -p dist
+          cd pc
+          zip -r ../dist/CountdownGeek-PC.zip . \
+            -x 'test/*' \
+            -x 'node_modules/*'
+          cd ..
+          ls -lh dist/CountdownGeek-PC.zip
+
       - name: Artifacts do Actions
         uses: actions/upload-artifact@v4
         with:
-          name: countdown-wallpaper-apk
-          path: dist/*.apk
+          name: countdown-geek
+          path: dist/*
 
       - name: Publicar no GitHub Release
         env:
@@ -130,6 +140,9 @@ jobs:
               "1. Baixe **${PRINCIPAL}** no celular." \
               '2. Abra o arquivo e permita "instalar de fontes desconhecidas" se pedir.' \
               '3. Segure na tela inicial → Papel de parede → Papéis de parede animados → **Contador Geek**.' ''
+            printf '%s\n' '#### 💻 Versão para PC' \
+              'Baixe **CountdownGeek-PC.zip**, extraia e abra `abrir-pc.cmd` (Windows) ou `index.html`.' \
+              'Também funciona como wallpaper HTML no Lively Wallpaper.' ''
             printf '%s\n' '#### 📦 Arquivos'
             if [ "${PRINCIPAL}" = "CountdownGeek-release.apk" ]; then
               printf '%s\n' \
@@ -140,18 +153,19 @@ jobs:
                 '- `CountdownGeek-debug.apk` — chave de release não configurada, então este é o instalável.' \
                 '- Sem os secrets de assinatura o APK de release sai sem assinar (não instala).'
             fi
+            printf '%s\n' '- `CountdownGeek-PC.zip` — versão para PC (HTML5; Windows, Linux ou macOS).' ''
             printf '%s\n' '' '> Todos os APKs têm o mesmo conteúdo; muda só a assinatura.'
           } > notes.md
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG já existe: atualizando assets."
-            gh release upload "$TAG" dist/*.apk --clobber
+            gh release upload "$TAG" dist/*.apk dist/CountdownGeek-PC.zip --clobber
             gh release edit "$TAG" --title "$TITLE" --notes-file notes.md
           else
             echo "Criando release $TAG."
-            gh release create "$TAG" dist/*.apk \
+            gh release create "$TAG" dist/*.apk dist/CountdownGeek-PC.zip \
               --title "$TITLE" \
               --notes-file notes.md \
               --target "$GITHUB_SHA" \
-              || { echo "::warning::Não deu pra criar a release $TAG — tentando anexar na que já existe."; gh release upload "$TAG" dist/*.apk --clobber; }
+              || { echo "::warning::Não deu pra criar a release $TAG — tentando anexar na que já existe."; gh release upload "$TAG" dist/*.apk dist/CountdownGeek-PC.zip --clobber; }
           fi

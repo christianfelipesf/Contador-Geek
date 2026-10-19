@@ -15,6 +15,9 @@ progresso e destaque de um card por vez.
 > A pasta inteira pode ser usada no [Lively Wallpaper](https://www.rocksdanister.com/lively/)
 > como papel de parede animado.
 
+> **Baixar pronto:** [CountdownGeek-PC.zip](https://github.com/christianfelipesf/Contador-Geek/releases/latest/download/CountdownGeek-PC.zip)
+> (anexado automaticamente em toda release do GitHub).
+
 ---
 
 ## 🚀 Abrir
