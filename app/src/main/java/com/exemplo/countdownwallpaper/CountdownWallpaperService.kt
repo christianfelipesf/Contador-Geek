@@ -108,6 +108,7 @@ class CountdownWallpaperService : WallpaperService() {
         const val HOVER_MS = "hover_ms"     // tempo parado em cada card
         const val HOVER_TR = "hover_tr"     // duração da transição entre cards (ms)
         const val ZOOM = "zoom"             // card cresce ao selecionar
+        const val CARD_SCALE = "card_scale" // tamanho dos cards em % (60..140)
         const val BANNERS = "banners"       // banners geek no fundo (roxo por cima)
         const val BANNER_MS = "banner_ms"   // tempo parado em cada banner
         const val BANNER_TR = "banner_tr"   // duração da transição entre banners
@@ -520,12 +521,20 @@ class CountdownWallpaperService : WallpaperService() {
             val paisagem = wf / hf >= 1.1f
             colunas = if (paisagem) 2 else 1
             val linhas = (eventos.size + colunas - 1) / colunas
+
+            // Tamanho dos cards (60%..140%). A grade é escalada e centralizada
+            // na área original, sempre limitada pra caber na tela.
+            val escala = ((prefsCache?.current?.cardScale ?: 100) / 100f).coerceIn(0.6f, 1.4f)
+            val areaW = wf * (if (paisagem) 0.88f else 0.76f)
+            val areaH = hf * (if (paisagem) 0.58f else 0.60f)
+            val spanW = (areaW * escala).coerceAtMost(wf * 0.96f)
+            val spanH = (areaH * escala).coerceAtMost(hf * 0.72f)
+            margin = (wf - spanW) / 2f
             val gapX = if (colunas > 1) wf * 0.03f else 0f
-            margin = wf * (if (paisagem) 0.06f else 0.12f)
-            cardH = (hf * (if (paisagem) 0.58f else 0.60f)) / linhas
+            cardH = spanH / linhas
             cardRealH = (cardH - 20f) * 0.8f
-            val top = hf * (if (paisagem) 0.26f else 0.20f)
-            val cw = ((wf - margin * 2f - gapX * (colunas - 1)) / colunas).toInt()
+            val top = hf * (if (paisagem) 0.26f else 0.20f) + (areaH - spanH) / 2f
+            val cw = ((spanW - gapX * (colunas - 1)) / colunas).toInt()
             val ch = cardRealH.toInt()
             cardPxW = cw
             cardPxH = ch
@@ -718,12 +727,15 @@ class CountdownWallpaperService : WallpaperService() {
 
             // Snapshot em RAM — zero I/O aqui (antes: getSharedPreferences por frame).
             val s = prefsCache?.current ?: RenderSettings()
+            val escalaMudou = lastSettings?.cardScale != s.cardScale
             if (s != lastSettings) {
                 cTopInt = parseColor(s.cTop, Prefs.DEF_TOP)
                 cMidInt = parseColor(s.cMid, Prefs.DEF_MID)
                 cBotInt = parseColor(s.cBot, Prefs.DEF_BOT)
                 lastSettings = s
             }
+            // Tamanho dos cards muda o layout: precisa re-assar os retângulos.
+            if (escalaMudou) needRebake = true
             // Tempo acumulado: corre só com o wallpaper visível e tem o delta
             // limitado. Voltar depois de horas com a tela apagada (ou de um
             // travamento) não dá mais salto no gradiente/glows/banners.

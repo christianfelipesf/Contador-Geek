@@ -48,6 +48,7 @@
     </string-array>
 
     <string name="sec_selecao">Selección de tarjetas</string>
+    <string name="cfg_card_scale">Tamaño de las tarjetas: %1$d%%</string>
     <string name="cfg_hover">Resaltar una tarjeta a la vez</string>
     <string name="cfg_hover_ms">Tiempo por tarjeta: %1$ds</string>
     <string name="cfg_hover_tr">Transición entre tarjetas: %1$dms</string>

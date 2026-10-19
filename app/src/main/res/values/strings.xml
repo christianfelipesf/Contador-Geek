@@ -58,6 +58,7 @@
     </string-array>
 
     <string name="sec_selecao">Card selection</string>
+    <string name="cfg_card_scale">Card size: %1$d%%</string>
     <string name="cfg_hover">Highlight one card at a time</string>
     <string name="cfg_hover_ms">Time on each card: %1$ds</string>
     <string name="cfg_hover_tr">Transition between cards: %1$dms</string>

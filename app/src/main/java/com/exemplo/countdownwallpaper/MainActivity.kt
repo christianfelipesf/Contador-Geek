@@ -182,6 +182,21 @@ class MainActivity : Activity() {
         // ---------- SELEÇÃO (HOVER) ----------
         layout.addView(secao(getString(R.string.sec_selecao)))
 
+        val lblCard = rotulo("")
+        val skCard = SeekBar(this).apply { max = 80 } // 60..140%
+        fun mostraCard(v: Int) { lblCard.text = getString(R.string.cfg_card_scale, v + 60) }
+        skCard.progress = (p.getInt(Prefs.CARD_SCALE, 100).coerceIn(60, 140) - 60)
+        mostraCard(skCard.progress)
+        skCard.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, v: Int, u: Boolean) {
+                mostraCard(v)
+                p.edit().putInt(Prefs.CARD_SCALE, v + 60).apply()
+            }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        layout.addView(lblCard); layout.addView(skCard)
+
         layout.addView(caixa(R.string.cfg_hover, p.getBoolean(Prefs.HOVER, true)) { v ->
             p.edit().putBoolean(Prefs.HOVER, v).apply()
         })

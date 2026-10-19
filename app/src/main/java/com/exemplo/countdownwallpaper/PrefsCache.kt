@@ -16,6 +16,7 @@ data class RenderSettings(
     val hoverMs: Long = 9000L, // tempo parado por card (padrão 9s)
     val hoverTr: Long = 600L,
     val zoom: Boolean = true,
+    val cardScale: Int = 100, // tamanho dos cards em % (60..140)
     val showBanners: Boolean = true,
     val bannerMs: Long = 18000L,
     val bannerTr: Long = 1500L,
@@ -69,6 +70,7 @@ class PrefsCache(private val appContext: Context) {
                 hoverMs = prefs.getLong(Prefs.HOVER_MS, 9000L).coerceAtLeast(1000L),
                 hoverTr = prefs.getLong(Prefs.HOVER_TR, 600L).coerceIn(0L, 2000L),
                 zoom = prefs.getBoolean(Prefs.ZOOM, true),
+                cardScale = prefs.getInt(Prefs.CARD_SCALE, 100).coerceIn(60, 140),
                 showBanners = prefs.getBoolean(Prefs.BANNERS, true),
                 bannerMs = prefs.getLong(Prefs.BANNER_MS, 18000L).coerceIn(8000L, 30000L),
                 bannerTr = prefs.getLong(Prefs.BANNER_TR, 1500L).coerceIn(500L, 3000L),

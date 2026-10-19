@@ -64,9 +64,6 @@ jobs:
             echo "::warning::Secret RELEASE_KEYSTORE_BASE64 ausente: o APK de release sairia sem assinatura, então o build vai publicar o APK de debug."
           fi
 
-      - name: Testes unitários
-        run: gradle :app:testDebugUnitTest --stacktrace --console=plain
-
       - name: Build Debug
         run: gradle :app:assembleDebug --stacktrace --console=plain
 

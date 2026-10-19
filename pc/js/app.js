@@ -29,6 +29,7 @@
         speed: 1,
         fps: 30,
         particles: 30,
+        cardScale: 100,
         hover: true,
         hoverMs: 9000,
         hoverTr: 600,
@@ -109,6 +110,7 @@
             ajudaSaver: "Congela o fundo, desliga as estrelas e o destaque, e atualiza só de 2 em 2 segundos.",
 
             secSelecao: "Seleção dos cards",
+            cardScale: "Tamanho dos cards",
             hover: "Destacar um card por vez",
             zoom: "Card cresce ao selecionar (zoom)",
             hoverMs: "Tempo parado por card",
@@ -164,6 +166,7 @@
             ajudaSaver: "Freezes the background, turns off stars and highlighting, and redraws only every 2 seconds.",
 
             secSelecao: "Card selection",
+            cardScale: "Card size",
             hover: "Highlight one card at a time",
             zoom: "Card grows when selected (zoom)",
             hoverMs: "Time on each card",
@@ -219,6 +222,7 @@
             ajudaSaver: "Congela el fondo, apaga las estrellas y el resalte, y redibuja solo cada 2 segundos.",
 
             secSelecao: "Selección de tarjetas",
+            cardScale: "Tamaño de las tarjetas",
             hover: "Resaltar una tarjeta a la vez",
             zoom: "La tarjeta crece al seleccionarla (zoom)",
             hoverMs: "Tiempo por tarjeta",
@@ -275,7 +279,8 @@
         lastSwitch: 0,
         panPos: 0.5,
         panDir: 1,
-        panFix: 0.5
+        panFix: 0.5,
+        ultimaPos: ""
     };
 
     var stars = {
@@ -343,6 +348,7 @@
             speed: clamp(raw.speed, 0.25, 2, DEFAULTS.speed),
             fps: fps,
             particles: Math.round(clamp(raw.particles, 0, 80, DEFAULTS.particles)),
+            cardScale: Math.round(clamp(raw.cardScale, 60, 140, DEFAULTS.cardScale)),
             hover: raw.hover !== false,
             hoverMs: Math.round(clamp(raw.hoverMs, 3000, 15000, DEFAULTS.hoverMs)),
             hoverTr: Math.round(clamp(raw.hoverTr, 0, 2000, DEFAULTS.hoverTr)),
@@ -370,6 +376,7 @@
             speed: salvo.speed,
             fps: salvo.fps,
             particles: salvo.particles,
+            cardScale: salvo.cardScale,
             hover: salvo.hover,
             hoverMs: salvo.hoverMs,
             hoverTr: salvo.hoverTr,
@@ -427,6 +434,7 @@
         var root = document.documentElement;
         root.style.setProperty("--sel-scale", (settings.zoom && !settings.saver) ? "1.045" : "1");
         root.style.setProperty("--hover-tr", settings.hoverTr + "ms");
+        root.style.setProperty("--card-scale", (settings.cardScale / 100).toFixed(3));
 
         var speed = Math.max(0.25, settings.speed);
         var fundoDur = (26 / speed).toFixed(2) + "s";
@@ -554,6 +562,7 @@
         if (!el.velValor) return;
         el.velValor.textContent = Math.round(settings.speed * 100) + "%";
         el.partValor.textContent = String(settings.particles);
+        el.cardValor.textContent = settings.cardScale + "%";
         el.hoverValor.textContent = Math.round(settings.hoverMs / 1000) + "s";
         el.hovertrValor.textContent = settings.hoverTr + "ms";
         el.bannerValor.textContent = Math.round(settings.bannerMs / 1000) + "s";
@@ -768,6 +777,7 @@
         bannerState.panPos = Math.random();
         bannerState.panDir = Math.random() < 0.5 ? -1 : 1;
         bannerState.panFix = Math.random();
+        bannerState.ultimaPos = "";
         atualizarPan(0);
     }
 
@@ -865,7 +875,14 @@
             posY = overY > 0 ? bannerState.panPos * 100 : 50;
         }
 
-        el.bannerImg.style.backgroundPosition = posX.toFixed(2) + "% " + posY.toFixed(2) + "%";
+        // Atualiza em passos de 0.2%: evita repintar a imagem inteira a cada frame.
+        var qx = Math.round(posX / 0.2) * 0.2;
+        var qy = Math.round(posY / 0.2) * 0.2;
+        var novaPos = qx + "% " + qy + "%";
+        if (novaPos !== bannerState.ultimaPos) {
+            bannerState.ultimaPos = novaPos;
+            el.bannerImg.style.backgroundPosition = novaPos;
+        }
     }
 
     function reiniciarBanners() {
@@ -1105,6 +1122,7 @@
         el.velocidade.value = String(Math.round(settings.speed * 100));
         el.fluidez.value = String(settings.fps);
         el.particulas.value = String(settings.particles);
+        el.cardScale.value = String(settings.cardScale);
         el.hoverMs.value = String(Math.round(settings.hoverMs / 1000));
         el.hoverTr.value = String(settings.hoverTr);
         el.bannerMs.value = String(Math.round(settings.bannerMs / 1000));
@@ -1137,6 +1155,13 @@
 
         el.particulas.addEventListener("input", function () {
             settings.particles = Math.round(clamp(el.particulas.value, 0, 80, 30));
+            sincronizarRotulos();
+            recalcularEfetivo();
+            salvarSettings();
+        });
+
+        el.cardScale.addEventListener("input", function () {
+            settings.cardScale = Math.round(clamp(el.cardScale.value, 60, 140, 100));
             sincronizarRotulos();
             recalcularEfetivo();
             salvarSettings();
@@ -1340,6 +1365,8 @@
         el.fluidez = $("fluidez");
         el.particulas = $("particulas");
         el.partValor = $("part-valor");
+        el.cardScale = $("card-scale");
+        el.cardValor = $("card-valor");
         el.saver = $("saver");
         el.hover = $("hover");
         el.zoom = $("zoom");
