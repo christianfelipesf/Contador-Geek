@@ -34,6 +34,7 @@
   .thumb{width:56px;height:56px;border-radius:12px;background:linear-gradient(45deg,var(--cor),#4C1D95);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;margin-left:10px}
   .dias{font-size:28px;font-weight:900;text-align:right}
   .dias small{display:block;font-size:12px;font-weight:400;color:#DDD6FE}
+  .dias .horas{color:#C4B5FD}
   .foot{text-align:center;color:#DDD6FE;font-size:12px;margin-top:auto;padding-top:16px;position:relative;z-index:2}
 </style>
 </head>
@@ -57,11 +58,26 @@
     const t=new Date(d+"T00:00:00");
     return Math.round((t-h)/86400000);
   }
+  function horasFaltam(d){
+    const agora=new Date();
+    const alvo=new Date(d+"T00:00:00");
+    const dd=diasFaltam(d);
+    // "É HOJE!": a meia-noite que ABRE o dia já passou, então conta o que
+    // ainda resta dele (até a meia-noite que o FECHA).
+    const ref=dd===0?new Date(alvo.getFullYear(),alvo.getMonth(),alvo.getDate()+1):alvo;
+    const min=Math.floor((ref-agora)/60000);
+    if(min<=0) return "";
+    const hTot=Math.floor(min/60);
+    const h=dd===0?hTot:hTot-(dd-1)*24;
+    return h>=1&&h<=23?h+"h":"";
+  }
   function render(){
     document.getElementById('hoje').textContent="hoje: "+new Date().toLocaleDateString('pt-BR');
     document.getElementById('lista').innerHTML=eventos.map(ev=>{
       const dd=diasFaltam(ev.data);
       let txt=dd>1?dd+" <small>DIAS</small>":dd==1?"AMANHÃ!":dd==0?"É HOJE!":"JÁ SAIU!";
+      const hh=horasFaltam(ev.data);
+      if(hh) txt+=`<small class="horas">${hh}</small>`;
       return `<div class="card" style="--cor:${ev.cor}"><div class="thumb" style="--cor:${ev.cor}">${ev.emoji}</div><div class="info" style="flex:1"><b>${ev.titulo}</b><span>${ev.sub}</span></div><div class="dias">${txt}</div></div>`;
     }).join('');
   }

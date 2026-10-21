@@ -41,9 +41,12 @@ function conta(ev){
   const hoje = meiaNoite(agora);
   const dias = Math.round((alvo - hoje) / MS);
   const txt = dias > 1 ? `${dias} DIAS` : dias === 1 ? "AMANHÃ!" : dias === 0 ? "É HOJE!" : "JÁ SAIU!";
-  const min = Math.floor((alvo - agora) / 60000);
-  const h = min > 0 ? Math.floor(min/60) - (dias-1)*24 : 0;
-  const horas = h > 0 ? `${h}h` : "";
+  // "É HOJE!": a meia-noite que ABRE o dia já passou, então a referência
+  // passa a ser a meia-noite que o FECHA — o que ainda resta do dia.
+  const ref = dias === 0 ? new Date(alvo.getFullYear(), alvo.getMonth(), alvo.getDate() + 1) : alvo;
+  const min = Math.floor((ref - agora) / 60000);
+  const h = min > 0 ? (dias === 0 ? Math.floor(min/60) : Math.floor(min/60) - (dias-1)*24) : 0;
+  const horas = h > 0 && h < 24 ? `${h}h` : "";
   const total = alvos[ev.i] - inicio;
   const fr = Math.max(0, Math.min(1, (alvos[ev.i] - agora) / total));
   return { txt, horas, fr, dias };

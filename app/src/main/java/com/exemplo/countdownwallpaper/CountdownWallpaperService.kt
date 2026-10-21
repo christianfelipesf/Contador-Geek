@@ -47,32 +47,24 @@ class CountdownWallpaperService : WallpaperService() {
         engineRef?.recarregarIdioma()
     }
 
-    /** Eventos com nome/subtítulo/cor vindos dos recursos do idioma atual. */
-    private fun montarEventos(ctx: Context, inicio: LocalDate): List<Evento> {
-        fun sub(id: Int, data: LocalDate) = ctx.getString(id, dataCurta(ctx, data))
-        val vision = Eventos.VISION
-        val zelda = Eventos.ZELDA
-        val gta = Eventos.GTA
-        val doom = Eventos.DOOMSDAY
-        return listOf(
+    /**
+     * Eventos com nome/subtítulo/cor vindos dos recursos do idioma atual.
+     * A lista (e portanto a QUANTIDADE de cards) sai de [Eventos.TODOS]: os
+     * arrays da engine são dimensionados por ela, então adicionar um evento
+     * lá não estoura mais nada.
+     */
+    private fun montarEventos(ctx: Context, inicio: LocalDate): List<Evento> =
+        Eventos.TODOS.map { d ->
+            val sub = if (d.subComData) {
+                ctx.getString(d.sub, dataCurta(ctx, d.data))
+            } else {
+                ctx.getString(d.sub)
+            }
             Evento(
-                ctx.getString(R.string.ev_vision_titulo), ctx.getString(R.string.ev_vision_sub),
-                vision, inicio, "👁", ctx.getColor(R.color.ev_vision)
-            ),
-            Evento(
-                ctx.getString(R.string.ev_zelda_titulo), sub(R.string.ev_zelda_sub, zelda),
-                zelda, inicio, "🗡️", ctx.getColor(R.color.ev_zelda)
-            ),
-            Evento(
-                ctx.getString(R.string.ev_gta_titulo), sub(R.string.ev_gta_sub, gta),
-                gta, inicio, "🚗", ctx.getColor(R.color.ev_gta)
-            ),
-            Evento(
-                ctx.getString(R.string.ev_doomsday_titulo), sub(R.string.ev_doomsday_sub, doom),
-                doom, inicio, "🛡️", ctx.getColor(R.color.ev_doomsday)
+                ctx.getString(d.titulo), sub,
+                d.data, inicio, d.emoji, ctx.getColor(d.cor)
             )
-        )
-    }
+        }
 
     /**
      * Data curta no formato do idioma do sistema, montada pelo próprio Android
@@ -217,8 +209,11 @@ class CountdownWallpaperService : WallpaperService() {
         private var quads: GlEngine.QuadRenderer? = null
         private var fbo: HalfResFbo? = null
         private var haloTex = 0
-        private val cardTex = IntArray(4)
-        private val cardRects = Array(4) { RectF() }
+        // Tamanho = número de eventos: adicionar um em [Eventos.TODOS] já
+        // redimensiona tudo (antes era 4 fixo e um 5º evento estourava o
+        // render de vez — IndexOutOfBounds a cada frame, tela preta).
+        private val cardTex = IntArray(eventos.size)
+        private val cardRects = Array(eventos.size) { RectF() }
         private var cardH = 0f
         private var cardRealH = 0f // altura visual do card (20% menor na vertical)
         // Tamanho em pixels do bitmap do fundo do card (pra reasser a cada hora).
@@ -234,12 +229,12 @@ class CountdownWallpaperService : WallpaperService() {
         private val sprHTop = Sprite()
         private val sprHTitle = Sprite()
         private val sprFooter = Sprite()
-        private val labels = Array(4) { Sprite() }
-        private val subs = Array(4) { Sprite() }
-        private val days = Array(4) { Sprite() }
-        private val horas = Array(4) { Sprite() }
+        private val labels = Array(eventos.size) { Sprite() }
+        private val subs = Array(eventos.size) { Sprite() }
+        private val days = Array(eventos.size) { Sprite() }
+        private val horas = Array(eventos.size) { Sprite() }
         // Quanto ainda falta de cada card (0..1): largura da sombra escura.
-        private val fracRestante = FloatArray(4) { 1f }
+        private val fracRestante = FloatArray(eventos.size) { 1f }
         private var cachedDay: LocalDate? = null
         private var cachedHora = -1
         // Cores parseadas 1x por snapshot (não por frame).

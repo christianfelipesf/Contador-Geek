@@ -99,6 +99,27 @@ class CountdownLogicTest {
     }
 
     @Test
+    fun `textoHoras no dia do evento conta o resto do dia`() {
+        // "É HOJE!": a meia-noite que ABRE o dia já passou, então a referência
+        // passa a ser a meia-noite que o FECHA — o que ainda resta dele.
+        val meiaNoiteDeHoje = LocalDateTime.of(2026, 10, 21, 0, 0)
+        assertEquals(
+            "13h",
+            CountdownLogic.textoHoras(LocalDateTime.of(2026, 10, 21, 11, 0), meiaNoiteDeHoje)
+        )
+        assertEquals(
+            "1h",
+            CountdownLogic.textoHoras(LocalDateTime.of(2026, 10, 21, 23, 0), meiaNoiteDeHoje)
+        )
+        // 23:30 = menos de uma hora inteira; 00:00 daria "24h" (não existe).
+        assertEquals(
+            "",
+            CountdownLogic.textoHoras(LocalDateTime.of(2026, 10, 21, 23, 30), meiaNoiteDeHoje)
+        )
+        assertEquals("", CountdownLogic.textoHoras(meiaNoiteDeHoje, meiaNoiteDeHoje))
+    }
+
+    @Test
     fun `fracaoRestante no inicio da janela`() {
         assertEquals(
             1f,

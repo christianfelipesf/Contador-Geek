@@ -66,6 +66,18 @@ test("horasRestantes fica vazio quando já passou", () => {
     );
 });
 
+test("horasRestantes no dia do evento conta o resto do dia", () => {
+    // "É HOJE!": a meia-noite que ABRE o dia já passou, então a referência
+    // passa a ser a meia-noite que o FECHA — o que ainda resta dele.
+    const meiaNoiteDeHoje = new Date(2026, 9, 21, 0, 0, 0);
+
+    assert.equal(CL.horasRestantes(new Date(2026, 9, 21, 11, 0), meiaNoiteDeHoje), 13);
+    assert.equal(CL.horasRestantes(new Date(2026, 9, 21, 23, 0), meiaNoiteDeHoje), 1);
+    // 23:30 = menos de uma hora inteira; 00:00 daria "24h" (não existe).
+    assert.equal(CL.horasRestantes(new Date(2026, 9, 21, 23, 30), meiaNoiteDeHoje), 0);
+    assert.equal(CL.horasRestantes(meiaNoiteDeHoje, meiaNoiteDeHoje), 0);
+});
+
 test("fracaoRestante vai de 1 a 0 e não estoura", () => {
     const inicio = new Date(2026, 9, 15, 0, 0);
     const alvo = new Date(2026, 9, 21, 0, 0);
@@ -85,6 +97,14 @@ test("eventoParaUI monta dias, horas, barra e subtítulo em pt", () => {
     assert.equal(ev.chaveDias, "dias");
     assert.equal(ev.horas, 12);
     assert.ok(Math.abs(ev.restante - 0.25) < 0.001);
+});
+
+test("eventoParaUI no dia do evento mostra hoje e o resto do dia", () => {
+    const ev = CL.eventoParaUI(CL.EVENTOS[0], "pt", new Date(2026, 9, 21, 11, 0, 0));
+
+    assert.equal(ev.dias, 0);
+    assert.equal(ev.chaveDias, "hoje");
+    assert.equal(ev.horas, 13);
 });
 
 test("eventoParaUI troca idioma e data", () => {

@@ -24,7 +24,7 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 ## ✨ O que ele faz
 
 - **4 contagens regressivas** nos cartões, sempre atualizadas sozinhas: o cartão é regerado (novo bitmap) quando o dia ou a hora vira.
-- **Dias + horas**: `62 DIAS` com `10h` embaixo — nada de minutos poluindo a tela. Na véspera aparece **`AMANHÃ!`**, no dia **`É HOJE!`** e depois **`JÁ SAIU!`**.
+- **Dias + horas**: `62 DIAS` com `10h` embaixo — nada de minutos poluindo a tela. Na véspera aparece **`AMANHÃ!`**, no dia **`É HOJE!`** (com as horas que ainda faltam pra acabar o dia) e depois **`JÁ SAIU!`**.
 - **Barra de progresso dentro do cartão**: o trecho escuro mostra quanto do tempo já passou, com uma **barrinha colorida** colada na quina esquerda e um traço marcador na altura cheia.
 - **Fundo roxo** com gradiente, estrelas e brilhos que se mexem devagar (shader, não vídeo).
 - **Banners geek** opcionais no fundo, cobertos por uma camada roxa ajustável.
@@ -42,7 +42,9 @@ Gradiente roxo em OpenGL ES, estrelas no shader e cartões que vão escurecendo 
 | 🚗 **GTA 6** — PS5 / Xbox | 19/11/2026 | `#F59E0B` |
 | 🛡️ **Vingadores Doomsday** — Cinema | 18/12/2026 | `#EF4444` |
 
-> As datas ficam em um único lugar (`Eventos.kt`) e a proporção da barra é calculada a partir de `15/10/2026` — dia em que a contagem começou.
+> As datas ficam em um único lugar (`Eventos.TODOS`, em `Eventos.kt`) e a proporção da barra é calculada a partir de `15/10/2026` — dia em que a contagem começou.
+>
+> **Pra adicionar um evento:** acrescente um `Def` em `Eventos.TODOS` e as strings `ev_<id>_titulo` / `ev_<id>_sub` (mais a cor `ev_<id>`) — o número de cartões, o layout e a prévia se ajustam sozinhos. Na versão PC a mesma lista fica em `pc/js/countdown.js`.
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 
@@ -245,7 +247,7 @@ A chave **nunca** vai pro repositório: ela é guardada num secret, em base64.
 gradle :app:testDebugUnitTest --offline --console=plain
 ```
 
-**18 testes** cobrindo dias restantes, plural, véspera/hoje/já saiu, horas extras (incluindo o fim da tarde na véspera e a meia-noite exata), a fração da barra nos extremos e os textos vindos do idioma injetado.
+**19 testes** cobrindo dias restantes, plural, véspera/hoje/já saiu, horas extras (incluindo o resto do dia do evento, o fim da tarde na véspera e a meia-noite exata), a fração da barra nos extremos e os textos vindos do idioma injetado.
 
 <div align="right"><a href="#-countdown-geek">↑ voltar ao topo</a></div>
 

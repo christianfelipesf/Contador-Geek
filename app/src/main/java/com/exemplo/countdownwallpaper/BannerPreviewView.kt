@@ -16,7 +16,6 @@ import android.util.AttributeSet
 import android.view.View
 import com.exemplo.countdownwallpaper.CountdownWallpaperService.Prefs
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import kotlin.math.max
 
 /**
@@ -58,13 +57,12 @@ class BannerPreviewView @JvmOverloads constructor(
         isFakeBoldText = true
     }
 
-    // (rótulo curto, data-alvo) — mesmas datas do wallpaper (Eventos.kt).
-    private val mockEvents = listOf(
-        "VISION QUEST" to Eventos.VISION,
-        "ZELDA" to Eventos.ZELDA,
-        "GTA 6" to Eventos.GTA,
-        "DOOMSDAY" to Eventos.DOOMSDAY
-    )
+    // (título, data-alvo) — sai dos mesmos eventos do wallpaper (Eventos.TODOS),
+    // então acrescentar um evento lá já aparece na prévia também.
+    private val mockEvents: List<Pair<String, LocalDate>> =
+        Eventos.TODOS.map { context.getString(it.titulo) to it.data }
+
+    private val textos = TextosRecursos(context)
 
     private val prefListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> invalidate() }
@@ -242,23 +240,37 @@ class BannerPreviewView @JvmOverloads constructor(
             }
         }
 
-        // ---- mock dos cards 2x2 ----
+        // ---- mock dos cards (2 colunas; as linhas acompanham os eventos) ----
         if (mockEvents.isNotEmpty()) {
             val today = LocalDate.now()
             val gap = w * 0.03f
             val cardW = (w - gap * 3f) / 2f
-            val cardH = h * 0.30f
+            val linhas = (mockEvents.size + 1) / 2
+            val cardH = h * 0.60f / linhas
             val topY = h * 0.34f
-            labelPaint.textSize = cardW * 0.09f
-            daysPaint.textSize = cardW * 0.22f
-            mockEvents.take(4).forEachIndexed { i, (label, date) ->
+            mockEvents.forEachIndexed { i, (label, date) ->
                 val cx = gap + (i % 2) * (cardW + gap)
                 val cy = topY + (i / 2) * (cardH + gap)
                 c.drawRoundRect(RectF(cx, cy, cx + cardW, cy + cardH), 18f, 18f, cardPaint)
-                val days = ChronoUnit.DAYS.between(today, date).coerceAtLeast(0)
+                val dias = CountdownLogic.diasFaltam(today, date)
+                // Mesmo texto do wallpaper (DIA/AMANHÃ!/É HOJE!/JÁ SAIU!),
+                // encolhido até caber no card.
+                val texto = CountdownLogic.textoDias(dias, textos)
+                encaixar(labelPaint, label, cardW * 0.88f, cardW * 0.09f, cardW * 0.045f)
                 c.drawText(label, cx + cardW / 2f, cy + cardH * 0.30f, labelPaint)
-                c.drawText(days.toString(), cx + cardW / 2f, cy + cardH * 0.72f, daysPaint)
+                encaixar(daysPaint, texto, cardW * 0.88f, cardW * 0.22f, cardW * 0.09f)
+                c.drawText(texto, cx + cardW / 2f, cy + cardH * 0.72f, daysPaint)
             }
+        }
+    }
+
+    /** Encolhe o [paint] até o [texto] caber em [larguraMax] (sem passar de [minimo]). */
+    private fun encaixar(paint: Paint, texto: String, larguraMax: Float, inicio: Float, minimo: Float) {
+        var tamanho = inicio
+        paint.textSize = tamanho
+        while (paint.measureText(texto) > larguraMax && tamanho > minimo) {
+            tamanho -= 1f
+            paint.textSize = tamanho
         }
     }
 }

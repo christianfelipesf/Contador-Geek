@@ -106,15 +106,21 @@
 
     /**
      * Horas que sobram ALÉM dos dias inteiros mostrados: 1..23.
-     * Devolve 0 quando não sobra hora, quando já passou ou na virada exata
-     * da meia-noite (o app antigo mostrava "24h" nesse instante).
+     * Devolve 0 quando não sobra hora inteira ou quando já passou.
+     *
+     * No dia do evento ("É HOJE!") a meia-noite que ABRE o dia já passou — era
+     * por isso que o card de hoje ficava sem horas. Aí a referência passa a ser
+     * a meia-noite que FECHA o dia: sobra o que resta dele.
      */
     function horasRestantes(agora, alvoMeiaNoite) {
-        var minutos = Math.floor((alvoMeiaNoite - agora) / 60000);
+        var dias = diasFaltam(agora, alvoMeiaNoite);
+        var alvo = dias === 0
+            ? new Date(alvoMeiaNoite.getFullYear(), alvoMeiaNoite.getMonth(), alvoMeiaNoite.getDate() + 1)
+            : alvoMeiaNoite;
+        var minutos = Math.floor((alvo - agora) / 60000);
         if (minutos <= 0) return 0;
         var horasTotais = Math.floor(minutos / 60);
-        var dias = diasFaltam(agora, alvoMeiaNoite);
-        var horas = horasTotais - (dias - 1) * 24;
+        var horas = dias === 0 ? horasTotais : horasTotais - (dias - 1) * 24;
         return horas >= 1 && horas <= 23 ? horas : 0;
     }
 

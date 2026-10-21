@@ -23,18 +23,23 @@ object CountdownLogic {
      * Horas que sobram ALÉM dos dias inteiros já mostrados: "12h".
      * Usa a meia-noite do dia alvo como referência, então a conta fecha com
      * o texto de dias (nada de "3 dias" em cima e "3d 7h" embaixo).
-     * Devolve "" quando não sobra hora ou a data já passou.
+     *
+     * No dia do evento ("É HOJE!") a meia-noite que ABRE o dia já passou —
+     * era por isso que o card de hoje ficava sem horas. Aí a referência passa
+     * a ser a meia-noite que FECHA o dia: sobra o que resta dele.
+     * Devolve "" quando não sobra hora inteira ou a data já passou.
      */
     fun textoHoras(
         agora: LocalDateTime,
         alvoMeiaNoite: LocalDateTime,
         textos: Textos = TextosPadrao
     ): String {
-        val minutos = ChronoUnit.MINUTES.between(agora, alvoMeiaNoite)
+        val dias = ChronoUnit.DAYS.between(agora.toLocalDate(), alvoMeiaNoite.toLocalDate())
+        val alvo = if (dias == 0L) alvoMeiaNoite.plusDays(1) else alvoMeiaNoite
+        val minutos = ChronoUnit.MINUTES.between(agora, alvo)
         if (minutos <= 0) return ""
         val horasTotais = minutos / 60
-        val dias = ChronoUnit.DAYS.between(agora.toLocalDate(), alvoMeiaNoite.toLocalDate())
-        val horas = horasTotais - (dias - 1) * 24
+        val horas = if (dias == 0L) horasTotais else horasTotais - (dias - 1) * 24
         // Na virada exata da meia-noite a conta dá 24; "24h" não existe num
         // relógio e aparecia por um instante em "AMANHÃ!". De 1 a 23 vale.
         return if (horas > 0L && horas < 24L) textos.horas(horas) else ""
